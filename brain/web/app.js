@@ -411,5 +411,13 @@ document.addEventListener("click", () => {
   if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
 }, { once: true });
 
+// Appairage automatique : le script d'installation ouvre /#token=jv_…
+// Le fragment (#) n'est jamais envoyé au serveur ; on l'efface aussitôt de l'adresse.
+if (location.hash.startsWith("#token=")) {
+  const fromLink = decodeURIComponent(location.hash.slice(7));
+  history.replaceState(null, "", location.pathname);
+  if (/^jv_[A-Za-z0-9_-]{20,120}$/.test(fromLink)) store.set(TOKEN_KEY, fromLink);
+}
+
 const saved = store.get(TOKEN_KEY);
 if (saved) start(saved); else setupScreen();

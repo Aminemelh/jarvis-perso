@@ -27,38 +27,44 @@ Pour brancher tes comptes : [docs/CONNECTIONS.md](docs/CONNECTIONS.md).
 
 Tout est gratuit et local, **sauf le LLM** (Claude, payé à l'usage).
 
-## Démarrage rapide (Windows)
+## Démarrage rapide (Windows) : une seule commande
 
-Prérequis : [Python 3.12](https://www.python.org/downloads/) (coche « Add to PATH ») et Git.
+Ouvre **PowerShell** et colle :
 
 ```powershell
-git clone https://github.com/aminemelh/jarvis-perso.git
-cd jarvis-perso\brain
+winget install -e --id Git.Git    # seulement si Git n'est pas installé (puis rouvre PowerShell)
+git clone -b claude/jarvis-multidevice-assistant-sh5zlt https://github.com/Aminemelh/jarvis-perso.git $HOME\jarvis-perso
+powershell -ExecutionPolicy Bypass -File $HOME\jarvis-perso\install.ps1
+```
+
+Le script `install.ps1` fait tout seul :
+1. installe Python 3.12 s'il manque ;
+2. installe les dépendances ;
+3. crée `brain\.env` et te demande ta clé Claude, Gmail et ton agenda (tout est facultatif : sans clé, Jarvis démarre en **mode test gratuit**) ;
+4. télécharge la voix française ;
+5. crée le token du PC et **appaire le navigateur automatiquement** ;
+6. propose de **démarrer Jarvis avec Windows** ;
+7. lance Jarvis et ouvre http://localhost:8765.
+
+Ensuite, pour lancer Jarvis : double-clique sur **`Jarvis.cmd`**. Pour ajouter une clé ou un compte plus tard, ou pour mettre à jour le code, relance `install.ps1` : il saute ce qui est déjà fait. Si le navigateur redemande un token : `install.ps1 -Repair`.
+
+<details>
+<summary>Installation manuelle (pour comprendre chaque étape)</summary>
+
+```powershell
+cd $HOME\jarvis-perso\brain
 py -3.12 -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-
-# 1. Configuration
-copy .env.example .env
-notepad .env            # colle ta clé ANTHROPIC_API_KEY
-
-# 2. Voix française (environ 60 Mo, une seule fois)
+copy .env.example .env; notepad .env
 python -m piper.download_voices fr_FR-tom-medium --download-dir models/piper
-python -m jarvis_brain say "Bonsoir Monsieur. Tous les systèmes sont opérationnels."
-# -> écoute test.wav
-
-# 3. Un token par appareil (copie-le, il ne s'affiche qu'une fois)
-python -m jarvis_brain token add pc
-
-# 4. Lancement
-python -m jarvis_brain serve
+python -m jarvis_brain say "Bonsoir Monsieur."     # écrit test.wav
+python -m jarvis_brain token add pc                # copie le token affiché
+python -m jarvis_brain serve                       # puis http://localhost:8765
 ```
+</details>
 
-Ouvre **http://localhost:8765**, colle le token, touche le cercle et parle. Au premier lancement, Whisper télécharge son modèle (environ 500 Mo pour `small`).
-
-Pour que Jarvis te connaisse, copie `data-example\memory\` dans `data\memory\` et complète `profil.md`. Chaque fichier `.md` de ce dossier est lu à chaque requête.
-
-> Pas encore de clé API ? Mets `JARVIS_LLM=echo` dans `.env` : Jarvis répète ce qu'il entend. Ça permet de tester le micro, Whisper et la voix gratuitement.
+Pour que Jarvis te connaisse, copie `brain\data-example\memory\` dans `brain\data\memory\` et complète `profil.md`, ou dis-lui simplement « retiens que… ».
 
 ### Client vocal sans navigateur (mot de réveil « Hey Jarvis »)
 
