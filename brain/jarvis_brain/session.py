@@ -11,8 +11,9 @@ from __future__ import annotations
 import asyncio
 import itertools
 import logging
+import time
 from dataclasses import dataclass
-from typing import Awaitable, Callable
+from typing import TYPE_CHECKING, Awaitable, Callable
 
 from .config import Settings
 from .conversation import ConversationStore, to_messages
@@ -24,10 +25,14 @@ from .stt import STT
 from .tts import TTS
 from .wakeword import strip_wake_word
 
+if TYPE_CHECKING:
+    from .tools import ToolBox
+
 log = logging.getLogger(__name__)
 
 SendJson = Callable[[dict], Awaitable[None]]
 SendBytes = Callable[[bytes], Awaitable[None]]
+ToolBoxFactory = Callable[["DeviceSession"], "ToolBox | None"]
 
 SUPPORTED_ENCODINGS = {"pcm_s16le"}
 
@@ -50,7 +55,8 @@ class DeviceSession:
     _turn_ids = itertools.count(1)
 
     def __init__(self, device: str, settings: Settings, engines: Engines,
-                 store: ConversationStore, send_json: SendJson, send_bytes: SendBytes):
+                 store: ConversationStore, send_json: SendJson, send_bytes: SendBytes,
+                 toolbox_factory: ToolBoxFactory | None = None):
         self.device = device
         self.settings = settings
         self.engines = engines
@@ -63,7 +69,11 @@ class DeviceSession:
         self._audio_rate = 16_000
         self._audio_wake = False
         self._wake_checks: set[asyncio.Task] = set()
+        self._background: set[asyncio.Task] = set()
+        self.toolbox_factory = toolbox_factory
         self.want_audio = True
+        self.has_display = False
+        self.last_active = time.monotonic()
 
     # ---- envoi (un verrou garantit que le JSON et son audio restent collés) ----
 
@@ -77,6 +87,8 @@ class DeviceSession:
 
     async def on_json(self, msg: dict) -> None:
         kind = msg.get("type")
+        if kind in {"text", "audio_start"}:
+            self.last_active = time.monotonic()  # c'est ici que l'utilisateur se trouve
         if kind == "text":
             text = str(msg.get("text", "")).strip()
             if not text:
@@ -145,9 +157,34 @@ class DeviceSession:
                 pass
 
     async def close(self) -> None:
-        for task in list(self._wake_checks):
+        for task in list(self._wake_checks) + list(self._background):
             task.cancel()
         await self.cancel()
+
+    # ---- notifications spontanées (courriel reçu, rappel de rendez-vous…) ----
+
+    async def push_notification(self, text: str, card: dict | None, kind: str, speak: bool) -> None:
+        await self.send({"type": "notify", "kind": kind, "text": text, "card": card if self.has_display else None})
+        if speak:
+            task = asyncio.create_task(self._speak_notification(text))
+            self._background.add(task)
+            task.add_done_callback(self._background.discard)
+
+    async def _speak_notification(self, text: str) -> None:
+        # On ne coupe pas une réponse en cours : on attend qu'elle se termine.
+        if self._turn and not self._turn.done():
+            try:
+                await asyncio.wait_for(asyncio.shield(self._turn), timeout=120)
+            except (asyncio.TimeoutError, asyncio.CancelledError, Exception):  # noqa: BLE001
+                pass
+        audio = None
+        if self.want_audio:
+            try:
+                audio = await asyncio.to_thread(self.engines.tts.synthesize, clean_for_speech(text))
+            except Exception:  # noqa: BLE001
+                log.exception("Synthèse de la notification impossible")
+        await self.send({"type": "sentence", "turn_id": None, "index": 0, "text": text,
+                         "audio": audio is not None, "format": "wav"}, audio)
 
     async def _check_wake(self, pcm: bytes, rate: int) -> None:
         try:
@@ -209,11 +246,12 @@ class DeviceSession:
     async def _respond(self, turn_id: int, user_text: str, reply_parts: list[str]) -> None:
         system = build_system(self.settings, self.device)
         messages = to_messages(self.store.snapshot(), user_text)
+        toolbox = self.toolbox_factory(self) if self.toolbox_factory else None
         splitter = SentenceSplitter()
         sentences: asyncio.Queue[str | None] = asyncio.Queue()
         speaker = asyncio.create_task(self._speak_worker(turn_id, sentences))
         try:
-            async for delta in self.engines.llm.stream(system, messages):
+            async for delta in self.engines.llm.stream(system, messages, toolbox):
                 reply_parts.append(delta)
                 await self.send({"type": "reply_delta", "turn_id": turn_id, "text": delta})
                 for sentence in splitter.feed(delta):

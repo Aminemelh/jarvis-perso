@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,6 +18,22 @@ def _bool(value: str | None, default: bool = False) -> bool:
 
 def _path(value: str | None, default: str) -> Path:
     return Path(value or default).expanduser()
+
+
+@dataclass(frozen=True)
+class MailAccount:
+    name: str
+    host: str
+    user: str
+    password: str
+    port: int = 993
+    folder: str = "INBOX"
+
+
+@dataclass(frozen=True)
+class CalendarSource:
+    name: str
+    url: str
 
 
 @dataclass(frozen=True)
@@ -55,6 +72,22 @@ class Settings:
     piper_voice: Path = Path("models/piper/fr_FR-tom-medium.onnx")
     piper_length_scale: float = 1.0
 
+    # Localisation (météo, recherche web)
+    city: str = "Montréal"
+    region: str = "Québec"
+    country: str = "CA"
+
+    # Outils
+    tools_enabled: bool = True
+    web_search: bool = True
+    mail_accounts: tuple[MailAccount, ...] = ()
+    calendars: tuple[CalendarSource, ...] = ()
+
+    # Surveillance en arrière-plan (courriels, rappels de rendez-vous)
+    watch_interval_seconds: int = 120
+    reminder_minutes: int = 30
+    quiet_hours: tuple[int, int] | None = (22, 7)  # pas de voix entre 22 h et 7 h
+
     # Limites (anti-abus)
     max_audio_seconds: int = 30
     max_text_chars: int = 2000
@@ -71,6 +104,48 @@ class Settings:
     @property
     def memory_dir(self) -> Path:
         return self.data_dir / "memory"
+
+    @property
+    def watch_state_file(self) -> Path:
+        return self.data_dir / "watch_state.json"
+
+    @property
+    def inbox_file(self) -> Path:
+        return self.data_dir / "pending_notifications.jsonl"
+
+
+def _mail_accounts(environ: dict[str, str]) -> tuple[MailAccount, ...]:
+    """JARVIS_MAIL_<NOM>_HOST / _USER / _PASSWORD [/ _PORT / _FOLDER], un compte par <NOM>."""
+    names = sorted({m.group(1) for k in environ if (m := re.fullmatch(r"JARVIS_MAIL_([A-Z0-9]+)_HOST", k))})
+    accounts = []
+    for n in names:
+        get = lambda field, default="": environ.get(f"JARVIS_MAIL_{n}_{field}", default)  # noqa: E731
+        if get("HOST") and get("USER") and get("PASSWORD"):
+            accounts.append(MailAccount(
+                name=n.lower(), host=get("HOST"), user=get("USER"), password=get("PASSWORD"),
+                port=int(get("PORT", "993")), folder=get("FOLDER", "INBOX"),
+            ))
+    return tuple(accounts)
+
+
+def _calendars(environ: dict[str, str]) -> tuple[CalendarSource, ...]:
+    """JARVIS_CALENDAR_<NOM>_URL : adresse iCal secrète (Google Agenda, Outlook, iCloud…)."""
+    found = []
+    for key, value in sorted(environ.items()):
+        m = re.fullmatch(r"JARVIS_CALENDAR_([A-Z0-9]+)_URL", key)
+        if m and value:
+            found.append(CalendarSource(m.group(1).lower(), value))
+    return tuple(found)
+
+
+def _hours(value: str | None) -> tuple[int, int] | None:
+    if value is None:
+        return (22, 7)
+    value = value.strip()
+    if not value or value.lower() in {"off", "none", "non"}:
+        return None
+    start, end = value.split("-")
+    return int(start), int(end)
 
 
 def load_settings(env_file: str | os.PathLike[str] | None = ".env") -> Settings:
@@ -102,6 +177,16 @@ def load_settings(env_file: str | os.PathLike[str] | None = ".env") -> Settings:
         tts_backend=env("JARVIS_TTS", "piper"),
         piper_voice=_path(env("JARVIS_PIPER_VOICE"), "models/piper/fr_FR-tom-medium.onnx"),
         piper_length_scale=float(env("JARVIS_PIPER_LENGTH_SCALE", "1.0")),
+        city=env("JARVIS_CITY", "Montréal"),
+        region=env("JARVIS_REGION", "Québec"),
+        country=env("JARVIS_COUNTRY", "CA"),
+        tools_enabled=_bool(env("JARVIS_TOOLS"), True),
+        web_search=_bool(env("JARVIS_WEB_SEARCH"), True),
+        mail_accounts=_mail_accounts(dict(os.environ)),
+        calendars=_calendars(dict(os.environ)),
+        watch_interval_seconds=int(env("JARVIS_WATCH_INTERVAL", "120")),
+        reminder_minutes=int(env("JARVIS_REMINDER_MINUTES", "30")),
+        quiet_hours=_hours(env("JARVIS_QUIET_HOURS")),
         max_audio_seconds=int(env("JARVIS_MAX_AUDIO_SECONDS", "30")),
         max_text_chars=int(env("JARVIS_MAX_TEXT_CHARS", "2000")),
     )

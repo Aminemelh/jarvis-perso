@@ -23,6 +23,36 @@ const ui = {
   },
   orb(state) { $("talk").className = "orb " + (state || ""); },
   hint(text) { $("hint").textContent = text; },
+  // Fiche affichée par Jarvis (courriels, rendez-vous…). Tout passe par textContent :
+  // un courriel piégé ne peut pas injecter de HTML dans la page.
+  card(card, kind = "") {
+    if (!card) return;
+    const box = document.createElement("article");
+    box.className = "card " + kind;
+    const title = document.createElement("h2");
+    title.textContent = card.title || "";
+    box.appendChild(title);
+    if (card.text) {
+      const p = document.createElement("p");
+      p.textContent = card.text;
+      box.appendChild(p);
+    }
+    for (const item of card.items || []) {
+      const row = document.createElement("div");
+      row.className = "card-item";
+      for (const [cls, value] of [["item-title", item.title], ["item-subtitle", item.subtitle], ["item-detail", item.detail]]) {
+        if (!value) continue;
+        const el = document.createElement("div");
+        el.className = cls;
+        el.textContent = value;
+        row.appendChild(el);
+      }
+      box.appendChild(row);
+    }
+    $("cards").prepend(box);
+    while ($("cards").children.length > 5) $("cards").lastChild.remove();
+    box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  },
   add(kind, text) {
     const div = document.createElement("div");
     div.className = "msg " + kind;
@@ -106,7 +136,7 @@ class Brain {
     ws.binaryType = "arraybuffer";
     this.ws = ws;
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "auth", token: this.token, client: "web/0.1", audio_replies: prefs.voice }));
+      ws.send(JSON.stringify({ type: "auth", token: this.token, client: "web/0.2", audio_replies: prefs.voice, display: true }));
     };
     ws.onmessage = (ev) => {
       if (typeof ev.data !== "string") {
@@ -206,10 +236,23 @@ function onMessage(msg) {
       followUpUntil = Date.now() + 8000;
       ui.hint("Je vous écoute…");
       break;
+    case "display":
+      ui.card(msg.card);
+      break;
+    case "notify":
+      if (msg.card) ui.card(msg.card, "notify"); else ui.add("system", msg.text);
+      if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+        try { new Notification("Jarvis", { body: msg.text, icon: "icon.svg" }); } catch { /* ignoré */ }
+      }
+      break;
+    case "status":
+      ui.hint(msg.text);
+      break;
     case "ignored":
       break; // une phrase entendue sans « Jarvis » : on ne fait rien
     case "reply_end":
       jarvisBubble = null;
+      ui.hint(prefs.handsfree ? "J'écoute. Dis « Jarvis… »" : "Touche le cercle pour parler");
       if (!player.playing) afterReply();
       break;
     case "error":
@@ -363,7 +406,10 @@ $("forget").addEventListener("click", () => {
 });
 
 // Le mode mains libres a besoin d'un geste pour démarrer le micro (règle des navigateurs).
-document.addEventListener("click", () => { if (prefs.handsfree) ensureMic(); }, { once: true });
+document.addEventListener("click", () => {
+  if (prefs.handsfree) ensureMic();
+  if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+}, { once: true });
 
 const saved = store.get(TOKEN_KEY);
 if (saved) start(saved); else setupScreen();

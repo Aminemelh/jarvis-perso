@@ -1,0 +1,81 @@
+# Brancher tes comptes
+
+Jarvis va chercher les informations **directement à la source**, pas sur l'écran de ton PC ou de ton téléphone : ta boîte Gmail, ton Google Agenda… Il fonctionne donc même quand ton téléphone est éteint, et la réponse est la même où que tu sois.
+
+Tout se règle dans `brain/.env`, puis on redémarre le serveur. Au démarrage, le journal affiche la liste des outils actifs (`Outils : check_emails, find_bills, …`).
+
+## Courriels : Gmail
+
+Jarvis lit en **IMAP**, en **lecture seule** : il ne peut ni envoyer, ni supprimer, ni marquer comme lu.
+
+1. Active la **validation en deux étapes** sur ton compte Google (obligatoire pour l'étape 2).
+2. Crée un **mot de passe d'application** sur https://myaccount.google.com/apppasswords (nom : « Jarvis »). Google affiche 16 lettres.
+3. Dans `.env` :
+   ```
+   JARVIS_MAIL_GMAIL_HOST=imap.gmail.com
+   JARVIS_MAIL_GMAIL_USER=toi@gmail.com
+   JARVIS_MAIL_GMAIL_PASSWORD=abcdefghijklmnop
+   ```
+
+Ce mot de passe ne donne accès qu'aux courriels, pas à ton compte Google entier. Tu peux le révoquer à tout moment sur la même page. N'utilise **jamais** ton vrai mot de passe Google.
+
+Autres fournisseurs :
+
+| Fournisseur | `HOST` | Mot de passe |
+|---|---|---|
+| Gmail | `imap.gmail.com` | mot de passe d'application |
+| iCloud | `imap.mail.me.com` | mot de passe pour app (appleid.apple.com) |
+| Yahoo | `imap.mail.yahoo.com` | mot de passe d'application |
+| Outlook / Hotmail | pas encore pris en charge | Microsoft exige OAuth. En attendant, active le transfert automatique vers Gmail. |
+
+Plusieurs comptes : un bloc par compte, avec un nom différent (`JARVIS_MAIL_UQAM_…`, `JARVIS_MAIL_ICLOUD_…`).
+
+## Agenda : Google Agenda
+
+Jarvis lit l'**adresse iCal secrète** de ton agenda, en lecture seule. Aucun mot de passe n'est nécessaire, mais cette adresse donne accès à tout l'agenda : garde-la secrète comme un mot de passe.
+
+1. Sur un ordinateur, ouvre https://calendar.google.com, puis ⚙️ **Paramètres**.
+2. À gauche, clique sur ton agenda, puis **Intégrer l'agenda**.
+3. Copie l'**Adresse secrète au format iCal** (elle se termine par `basic.ics`).
+4. Dans `.env` :
+   ```
+   JARVIS_CALENDAR_PERSO_URL=https://calendar.google.com/calendar/ical/.../private-.../basic.ics
+   ```
+
+Tu as plusieurs agendas (cours, travail) ? Ajoute une ligne par agenda : `JARVIS_CALENDAR_COURS_URL=…`.
+
+Si l'adresse fuit, clique sur **Réinitialiser** sur la même page de Google Agenda : l'ancienne cesse de fonctionner.
+
+Outlook : Paramètres → Calendrier → Calendriers partagés → **Publier un calendrier** → lien ICS. iCloud : partage public de l'agenda, puis remplace `webcal://` par `https://` (Jarvis le fait aussi tout seul).
+
+## Météo
+
+Rien à configurer : Open-Meteo, gratuit et sans clé. La ville par défaut est `JARVIS_CITY`.
+
+## Recherche web
+
+C'est l'outil `web_search` de Claude, facturé environ 1 ¢ par recherche (3 recherches maximum par question). Pour le désactiver : `JARVIS_WEB_SEARCH=false`.
+
+## Ce que tu peux demander
+
+- « Jarvis, j'ai des nouveaux courriels ? » → résumé à l'oral, liste à l'écran
+- « Est-ce que j'ai des factures à payer ? » → fournisseur, montant et date limite
+- « Lis-moi le courriel de Sarah »
+- « J'ai quoi aujourd'hui ? » / « C'est quand mon prochain rendez-vous chez le dentiste ? »
+- « Affiche ma semaine sur mon téléphone » → la fiche apparaît sur l'appareil nommé (il doit être connecté)
+- « Retiens que je préfère les rendez-vous le matin » → écrit dans `data/memory/`
+- « Quel temps fera-t-il demain ? »
+
+## Ce qu'il fait tout seul
+
+Toutes les 2 minutes (`JARVIS_WATCH_INTERVAL`) :
+- **Nouveau courriel important** (les infolettres sont ignorées, sauf si c'est une facture) : « Vous avez reçu une facture d'Hydro-Québec… »
+- **Rendez-vous dans 30 minutes** (`JARVIS_REMINDER_MINUTES`) : « Rappel : dentiste dans 20 minutes, Clinique du Plateau. »
+
+La notification est **dite sur le dernier appareil que tu as utilisé**, et **affichée sur tous** ceux qui ont un écran. Si aucun appareil n'est connecté, elle est gardée et te sera dite à la prochaine connexion (« Pendant votre absence… »). Entre 22 h et 7 h (`JARVIS_QUIET_HOURS`), Jarvis affiche sans parler.
+
+Chaque notification est aussi ajoutée à l'historique partagé : tu peux dire « c'était quoi, ce courriel ? » depuis n'importe quel appareil.
+
+## Et le contenu du téléphone (SMS, notifications d'applis) ?
+
+Un navigateur ne peut pas lire tes SMS ni les notifications des autres applis, et c'est voulu. Il faudra la future **application Android** de Jarvis, avec une autorisation « accès aux notifications » que tu accordes explicitement (phase 4). D'ici là, tout ce qui passe par tes courriels et ton agenda est couvert.

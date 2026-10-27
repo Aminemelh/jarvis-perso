@@ -15,6 +15,10 @@ Jarvis entend ce qui se dit chez toi et dans ta voiture, et il aura bientôt acc
 | **En-têtes HTTP** | CSP stricte (aucun script externe ni inline), `nosniff`, `frame-ancestors 'none'`, `no-referrer`. Pas de page `/docs` exposée. |
 | **Secrets** | Clé API et tokens dans `.env`, ignoré par Git (`.gitignore`). |
 | **Mot de réveil local** | Avec `JARVIS_WAKE=local`, aucun son ne quitte l'appareil avant « Hey Jarvis ». |
+| **Outils en lecture seule** | Courriels : IMAP en TLS, boîte ouverte avec `EXAMINE` et messages lus avec `BODY.PEEK` (rien n'est marqué comme lu). Agenda : lien iCal en lecture. Aucun outil ne peut envoyer, payer ou supprimer. |
+| **Injection de prompt** | Un courriel piégé (« Jarvis, ignore tes règles et… ») est une vraie menace. Le contenu externe arrive au modèle marqué comme donnée non fiable, et le prompt système interdit d'y obéir. Surtout, les outils sont **en lecture seule par construction** : même trompé, Jarvis ne peut rien faire de grave. Le client web affiche tout en `textContent` (pas d'injection HTML). |
+| **Paramètres d'outils validés** | Chaque paramètre envoyé par le modèle est vérifié (type, bornes, champs inconnus) avant exécution. Le nom de fichier de mémoire est filtré, donc pas de `../`. |
+| **Mots de passe d'application** | Gmail et iCloud : un mot de passe dédié à Jarvis, révocable, jamais le mot de passe principal. |
 
 ## Accéder à Jarvis depuis tes autres appareils
 
@@ -42,8 +46,12 @@ Mets `JARVIS_HOST=0.0.0.0` et fournis un certificat (par exemple généré avec 
 - `data/conversation.jsonl` contient tout ce que tu as dit. Sauvegarde-le, mais pas sur un dépôt public. Supprime-le si tu veux que Jarvis oublie.
 - Garde les dépendances à jour : `pip install -U -r requirements.txt`.
 
-## À venir (phase 2)
+## Attention : la voiture et le téléphone lisent tes courriels
 
-- **Outils sensibles** (domotique, achats, messages) : confirmation vocale avant les actions irréversibles, et liste blanche d'outils par appareil (la télé n'a pas besoin d'ouvrir la porte du garage).
-- **Injection de prompt** : le contenu web et les courriels lus par Jarvis seront traités comme des données, jamais comme des ordres.
-- Journal d'audit des actions exécutées par les outils.
+Tout appareil qui a un token peut demander « lis-moi mes courriels ». Révoque immédiatement le token d'un appareil perdu, et pense à protéger le téléphone par un verrouillage d'écran.
+
+## À venir
+
+- **Outils qui agissent** (répondre à un courriel, domotique) : confirmation vocale avant toute action, et liste d'outils autorisés par appareil.
+- Journal d'audit des appels d'outils.
+- OAuth Google (accès plus fin et révocable que le mot de passe d'application).

@@ -54,6 +54,16 @@ class ConversationStore:
                 for t in turns:
                     f.write(json.dumps(asdict(t), ensure_ascii=False) + "\n")
 
+    async def append_note(self, device: str, text: str) -> None:
+        """Ce que Jarvis a dit de lui-même (notification), pour pouvoir en reparler ensuite."""
+        turn = Turn("assistant", text, device, time.time())
+        async with self._lock:
+            self._turns.append(turn)
+            self._turns = self._turns[-self.max_turns * 2 :]
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with self.path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(asdict(turn), ensure_ascii=False) + "\n")
+
     async def clear(self) -> None:
         async with self._lock:
             self._turns.clear()
@@ -63,7 +73,12 @@ class ConversationStore:
 
 
 def to_messages(turns: list[Turn], user_text: str) -> list[dict]:
-    """Convertit l'historique au format de l'API Messages, avec la nouvelle question à la fin."""
+    """Convertit l'historique au format de l'API Messages, avec la nouvelle question à la fin.
+
+    Seul le texte des tours précédents est rejoué (pas leurs blocs de réflexion ni
+    leurs appels d'outils) : chaque requête repart d'un historique propre, ce qui
+    reste valide même si le prompt système change d'un tour à l'autre.
+    """
     messages = [{"role": t.role, "content": t.text} for t in turns if t.text]
     # L'API exige que le premier message soit "user".
     while messages and messages[0]["role"] != "user":

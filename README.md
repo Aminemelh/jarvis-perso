@@ -13,13 +13,17 @@ Projet personnel, inspiré de l'idée de [ethanplusai/jarvis](https://github.com
                                                               └──────────────────────────────┘
 ```
 
-## Ce qui marche aujourd'hui (phase 1)
+## Ce qui marche aujourd'hui
 
 | Composant | Rôle |
 |---|---|
 | `brain/` | Serveur FastAPI : auth par token pour chaque appareil, STT Whisper local, Claude en streaming, voix Piper locale phrase par phrase, historique partagé |
 | `brain/web/` | **Client universel** : n'importe quel navigateur (PC, Android, télé, tablette). Bouton pour parler, mode mains libres « Jarvis… », saisie texte |
 | `clients/voice/` | Client vocal Python sans écran (Windows, Linux, **Raspberry Pi**) : mot de réveil local « Hey Jarvis » avec openWakeWord |
+| **Outils** | Courriels (Gmail, iCloud…), factures à payer, agenda (Google, Outlook…), météo, recherche web, mémoire (« retiens que… »), affichage de fiches sur n'importe quel appareil connecté |
+| **Autonomie** | Surveillance en arrière-plan : nouveau courriel important, facture reçue, rappel 30 min avant un rendez-vous. Jarvis le dit sur le dernier appareil utilisé et l'affiche sur les autres. |
+
+Pour brancher tes comptes : [docs/CONNECTIONS.md](docs/CONNECTIONS.md).
 
 Tout est gratuit et local, **sauf le LLM** (Claude, payé à l'usage).
 
@@ -73,6 +77,7 @@ Les navigateurs n'autorisent le micro qu'en **HTTPS**. La méthode la plus simpl
 
 ## Documentation
 
+- [docs/CONNECTIONS.md](docs/CONNECTIONS.md) : brancher Gmail, Google Agenda, etc., et ce que tu peux demander
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) : comment les morceaux s'emboîtent, et pourquoi
 - [docs/PROTOCOL.md](docs/PROTOCOL.md) : le protocole WebSocket (pour écrire un nouveau client)
 - [docs/SECURITY.md](docs/SECURITY.md) : tokens, réseau, HTTPS, Tailscale
@@ -86,7 +91,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-Les tests utilisent des moteurs factices : ils ne demandent ni clé API, ni micro, ni modèle à télécharger.
+Les tests utilisent des moteurs et des services factices : ils ne demandent ni clé API, ni micro, ni compte courriel, ni modèle à télécharger.
 
 ## Coûts
 

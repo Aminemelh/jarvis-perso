@@ -11,14 +11,23 @@ Tes choix : voiture en **Bluetooth, aux et Android Auto**, télé « autre marqu
 - [x] Client vocal Python avec « Hey Jarvis » local
 - [ ] **À toi de tester** : régler la sensibilité du micro et choisir la taille du modèle Whisper selon ton PC
 
-## Phase 2 : mémoire et outils
+## Phase 2 : mémoire, outils et autonomie (en cours)
 
-- Outil `remember` : Jarvis écrit lui-même dans `data/memory/*.md` (« Jarvis, retiens que… »)
-- Résumé automatique des vieilles conversations vers la mémoire longue
-- Outils via l'API Claude : météo (Open-Meteo, gratuit), heure et minuteurs, recherche web (outil serveur `web_search`), calendrier (Google Calendar ou CalDAV), domotique (Home Assistant)
-- Connexions MCP
-- Confirmation vocale des actions sensibles et permissions par appareil
-- Option Fish Audio (`tts/fish.py`) à côté de Piper
+Priorité actuelle : **ordinateur et téléphone**. La télé et la voiture viendront après.
+
+- [x] Outils : courriels (IMAP, lecture seule), factures, agenda (iCal), météo (Open-Meteo), recherche web
+- [x] `remember` : Jarvis écrit lui-même dans `data/memory/*.md`
+- [x] `show_on_screen` : fiches affichées sur l'appareil courant ou sur un autre (« affiche-le sur mon téléphone »)
+- [x] Surveillance en arrière-plan : nouveaux courriels, factures, rappels de rendez-vous
+- [x] Notifications sur le dernier appareil utilisé, file d'attente si tout est hors ligne, heures calmes
+- [ ] **À toi de tester** avec tes vrais comptes (docs/CONNECTIONS.md)
+- [ ] Suivi des factures : liste persistante « payée / à payer » avec rappel avant l'échéance
+- [ ] Briefing du matin (« Bonjour Monsieur, aujourd'hui vous avez… »)
+- [ ] Minuteurs et rappels vocaux (« rappelle-moi dans 20 minutes… »)
+- [ ] Notifications push sur le téléphone même quand la page est fermée (Web Push)
+- [ ] Résumé automatique des vieilles conversations vers la mémoire longue
+- [ ] Connexions MCP, domotique (Home Assistant)
+- [ ] Option Fish Audio (`tts/fish.py`) à côté de Piper
 
 ## Phase 3 : boîtier voiture (Raspberry Pi 5)
 
@@ -40,7 +49,7 @@ Un script `jarvis-audio-route` choisira la sortie au démarrage et à chaque con
 
 ## Phase 4 : télé et téléphone
 
-- **Téléphone Android** : d'abord le client web en PWA (« Ajouter à l'écran d'accueil »). Ensuite une petite app native (Kotlin) avec service en arrière-plan, mot de réveil et sortie Android Auto.
+- **Téléphone Android** : d'abord le client web en PWA (« Ajouter à l'écran d'accueil »). Ensuite une petite app native (Kotlin) avec service en arrière-plan, mot de réveil, sortie Android Auto, et lecture des notifications et SMS (avec ton autorisation explicite).
 - **Télé** : dis-moi la marque et le modèle. Selon le cas :
   - navigateur intégré avec micro (rare) : client web ;
   - sinon **Raspberry Pi en HDMI** avec micro USB : même client que la voiture, et un écran « tableau de bord » en plein écran (Chromium en mode kiosque sur le client web).

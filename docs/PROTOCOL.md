@@ -7,7 +7,7 @@ Un seul WebSocket : `ws(s)://<serveur>:8765/ws`. Les messages texte sont en JSON
 Le **premier** message, dans les 5 secondes :
 
 ```json
-{"type": "auth", "token": "jv_…", "client": "web/0.1", "audio_replies": true}
+{"type": "auth", "token": "jv_…", "client": "web/0.2", "audio_replies": true, "display": true}
 ```
 
 Réponse :
@@ -18,6 +18,8 @@ Réponse :
 ```
 
 En cas d'échec, la connexion est fermée avec le code **4401**. Après 5 échecs en une minute depuis la même IP, la connexion est fermée avec le code **4429**.
+
+`display: true` signale que l'appareil a un écran : il peut recevoir des fiches (`display`). Le serveur répond aussi la liste des outils actifs dans `auth_ok.tools`.
 
 Le token passe dans un message et non dans l'URL : les URL finissent souvent dans des logs (proxy, historique).
 
@@ -59,3 +61,25 @@ Règles :
 - `{"type":"error","code":"…","message":"…"}` signale une erreur. Avec un `turn_id`, une `sentence` lisible à voix haute suit (par exemple « Je n'arrive pas à joindre mon cerveau… »). La connexion reste ouverte.
 
 Codes d'erreur : `bad_json`, `unknown_type`, `bad_audio`, `too_long`, `turn_failed`.
+
+## 4. Pendant un tour : statut et affichage
+
+```
+{"type":"status","text":"Je consulte vos courriels…"}     (un outil est en cours)
+{"type":"display","card":{"title":"Courriels non lus","text":"","items":[
+   {"title":"Votre facture est prête","subtitle":"Hydro-Québec","detail":"Montant dû : 84,32 $"}]}}
+```
+
+Une fiche (`card`) a un `title`, un `text` facultatif et des `items` (`title`, et en option `subtitle` et `detail`). **Affiche tout en texte brut**, jamais en HTML : le contenu vient de courriels, donc de l'extérieur.
+
+## 5. Notifications spontanées
+
+Envoyées à tout moment, hors de tout tour :
+
+```
+{"type":"notify","kind":"mail|reminder|digest|info","text":"Vous avez reçu une facture…","card":{…}}
+{"type":"sentence","turn_id":null,"index":0,"text":"Vous avez reçu une facture…","audio":true,"format":"wav"}
+<binaire : WAV>
+```
+
+La `sentence` (la notification parlée) n'est envoyée qu'à l'appareil utilisé le plus récemment, et jamais pendant les heures calmes. `card` vaut `null` pour un appareil sans écran.

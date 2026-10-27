@@ -62,6 +62,31 @@ Ajouter Fish Audio, par exemple, revient à écrire `tts/fish.py` avec une méth
 | `prompts.py` | personnalité, mémoire (`data/memory/*.md`), date, heure et appareil |
 | `sentences.py` | découpage du flux en phrases, nettoyage du Markdown |
 | `wakeword.py` | détection de « Jarvis » dans une transcription |
+| `tools/` | outils proposés à Claude (`builtin.py`) et validation de leurs paramètres (`__init__.py`) |
+| `sources/` | accès aux données : `mail.py` (IMAP), `calendar.py` (iCal), `weather.py` (Open-Meteo) |
+| `services.py` | regroupe les sources configurées dans `.env` |
+| `hub.py` | appareils connectés, dernier utilisé, notifications et file d'attente |
+| `watcher.py` | surveillance en arrière-plan (nouveaux courriels, rappels de rendez-vous) |
+
+## Outils : comment Jarvis va chercher l'information
+
+```
+« J'ai des factures à payer ? »
+      │
+      ▼
+Claude ──tool_use: find_bills──► ToolBox.run ─► validation ─► IMAP (lecture seule)
+   ▲                                                              │
+   └──────────── tool_result (contenu marqué « non fiable ») ◄────┘
+   │
+   ├─ tool_use: show_on_screen ─► fiche affichée sur l'appareil
+   └─ texte : « Deux factures : Hydro-Québec, 84 $ pour le 12 novembre… » ─► voix
+```
+
+La boucle (`llm/claude.py`) continue tant que Claude demande des outils (8 tours au maximum). Les outils d'un même tour s'exécutent en parallèle. Seuls les outils dont la source est configurée sont proposés : sans compte courriel, Claude ne voit pas `check_emails`.
+
+## Autonomie : le hub et le watcher
+
+`watcher.py` tourne en tâche de fond et appelle `hub.notify()`. Le hub choisit **qui parle** (le dernier appareil utilisé) et **qui affiche** (tous les appareils avec écran), met en attente si personne n'est connecté, et écrit la notification dans l'historique partagé. C'est ce qui permet de reprendre la conversation n'importe où.
 
 ## Données (`brain/data/`, jamais commitées)
 
@@ -69,5 +94,7 @@ Ajouter Fish Audio, par exemple, revient à écrire `tts/fish.py` avec une méth
 data/
   devices.json        empreintes SHA-256 des tokens
   conversation.jsonl  historique (une ligne par message)
-  memory/*.md         mémoire longue durée, lue à chaque requête
+  memory/*.md         mémoire longue durée, lue à chaque requête (et écrite par l'outil remember)
+  watch_state.json    courriels déjà signalés, rappels déjà faits
+  pending_notifications.jsonl   notifications en attente (aucun appareil connecté)
 ```

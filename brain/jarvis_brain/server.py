@@ -21,7 +21,12 @@ from . import __version__
 from .auth import AuthRateLimiter, DeviceRegistry
 from .config import Settings
 from .conversation import ConversationStore
+from .hub import DeviceHub
+from .services import Services, create_services
 from .session import DeviceSession, Engines, ProtocolError
+from .tools import ToolBox, ToolContext
+from .tools.builtin import build_tools, server_tools
+from .watcher import Watcher
 
 log = logging.getLogger(__name__)
 
@@ -46,11 +51,21 @@ SECURITY_HEADERS = {
 }
 
 
-def create_app(settings: Settings, engines: Engines | None = None) -> FastAPI:
+def create_app(settings: Settings, engines: Engines | None = None, services: Services | None = None,
+               watch: bool = True) -> FastAPI:
     registry = DeviceRegistry(settings.devices_file)
     limiter = AuthRateLimiter()
     store = ConversationStore(settings.history_file, settings.history_turns)
+    hub = DeviceHub(settings, store)
+    services = services or create_services(settings)
+    tools = build_tools(settings, services) if settings.tools_enabled else {}
+    remote_tools = server_tools(settings) if settings.tools_enabled else []
     state: dict = {"engines": engines}
+
+    def toolbox_for(session: DeviceSession) -> ToolBox | None:
+        if not tools:
+            return None
+        return ToolBox(tools, ToolContext(settings, services, hub, session), remote_tools)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -58,10 +73,17 @@ def create_app(settings: Settings, engines: Engines | None = None) -> FastAPI:
             state["engines"] = await asyncio.to_thread(load_engines, settings)
         if not registry.list():
             log.warning("Aucun appareil enregistré. Crée un token : python -m jarvis_brain token add pc")
+        log.info("Outils : %s", ", ".join(sorted(tools)) or "aucun")
+        watcher_task = None
+        if watch and (services.mail or services.calendar):
+            watcher_task = asyncio.create_task(Watcher(settings, services, hub).run())
         yield
+        if watcher_task:
+            watcher_task.cancel()
 
     app = FastAPI(title="Jarvis brain", version=__version__, lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
+    app.state.hub = hub
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
@@ -102,18 +124,22 @@ def create_app(settings: Settings, engines: Engines | None = None) -> FastAPI:
 
         session = DeviceSession(
             device=device, settings=settings, engines=state["engines"], store=store,
-            send_json=ws.send_json, send_bytes=ws.send_bytes,
+            send_json=ws.send_json, send_bytes=ws.send_bytes, toolbox_factory=toolbox_for,
         )
         session.want_audio = bool(hello.get("audio_replies", True))
+        session.has_display = bool(hello.get("display", False))
         await session.send({
             "type": "auth_ok", "device": device, "protocol": PROTOCOL_VERSION,
             "server": f"jarvis-brain/{__version__}",
             "assistant": settings.assistant_name,
             "audio": {"input": "pcm_s16le", "output": "wav"},
+            "tools": sorted(tools),
         })
 
         # 2) Boucle de messages
+        hub.register(session)
         try:
+            await hub.deliver_pending(session)
             while True:
                 msg = await ws.receive()
                 if msg["type"] == "websocket.disconnect":
@@ -134,6 +160,7 @@ def create_app(settings: Settings, engines: Engines | None = None) -> FastAPI:
         except WebSocketDisconnect:
             pass
         finally:
+            hub.unregister(session)
             await session.close()
             log.info("Appareil déconnecté : %s", device)
 

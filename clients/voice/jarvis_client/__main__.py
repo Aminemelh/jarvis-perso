@@ -119,6 +119,10 @@ class VoiceClient:
                 self.pending_audio = bool(msg.get("audio")) and not stale
                 if not stale:
                     print(f"Jarvis : {msg['text']}")
+            elif kind == "notify":
+                print(f"\n[notification] {msg['text']}")
+            elif kind == "status":
+                print(f"({msg['text']})")
             elif kind == "wake":
                 self.follow_up_until = time.monotonic() + FOLLOW_UP_SECONDS + 2
             elif kind == "reply_end":
