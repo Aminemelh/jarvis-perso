@@ -1,0 +1,7 @@
+# Client vocal (Windows, Linux, Raspberry Pi)
+numpy>=2.0
+sounddevice>=0.5
+websockets>=13
+python-dotenv>=1.0
+# Mot de réveil local (JARVIS_WAKE=local). Facultatif en mode "server" ou "key".
+openwakeword==0.6.0

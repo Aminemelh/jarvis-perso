@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <title>Jarvis</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" type="module"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Jarvis</h1>
+      <span id="status" class="status offline">Hors ligne</span>
+    </header>
+
+    <section id="setup" hidden>
+      <p>Colle le token de cet appareil. Pour en créer un, sur le serveur :<br>
+        <code>python -m jarvis_brain token add telephone</code></p>
+      <form id="setup-form">
+        <input id="token" type="password" autocomplete="off" placeholder="jv_…" required>
+        <button type="submit">Connecter</button>
+      </form>
+    </section>
+
+    <section id="app" hidden>
+      <button id="talk" class="orb" aria-label="Parler à Jarvis">
+        <span class="orb-core"></span>
+      </button>
+      <p id="hint" class="hint">Touche le cercle pour parler</p>
+
+      <label class="toggle">
+        <input id="handsfree" type="checkbox">
+        <span>Mains libres : dis « Jarvis… »</span>
+      </label>
+
+      <div id="log" class="log" aria-live="polite"></div>
+
+      <form id="text-form" class="text-form">
+        <input id="text" type="text" autocomplete="off" placeholder="Ou écris ta demande…" maxlength="2000">
+        <button type="submit">Envoyer</button>
+      </form>
+
+      <details class="settings">
+        <summary>Réglages</summary>
+        <label class="toggle"><input id="voice" type="checkbox" checked><span>Réponses vocales</span></label>
+        <button id="forget" type="button" class="danger">Oublier le token de cet appareil</button>
+      </details>
+    </section>
+  </main>
+</body>
+</html>
