@@ -69,7 +69,8 @@ Ajouter Fish Audio, par exemple, revient à écrire `tts/fish.py` avec une méth
 | `watcher.py` | surveillance en arrière-plan (courriels, rendez-vous, rappels, factures, briefing) |
 | `pc.py` | contrôle du PC Windows (liste blanche d'actions, touches multimédia, verrouillage) |
 | `push.py` | notifications Web Push (VAPID, abonnements par appareil) |
-| `planner.py` | rappels et factures suivies (`data/planner.json`) |
+| `planner.py` | rappels, factures suivies et listes (`data/planner.json`) |
+| `school.py` | détection des remises Moodle / UQAM dans les agendas |
 | `briefing.py` | briefing du jour, composé sans appeler Claude (gratuit et instantané) |
 
 ## Outils : comment Jarvis va chercher l'information

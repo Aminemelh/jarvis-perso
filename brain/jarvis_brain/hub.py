@@ -34,7 +34,7 @@ def in_quiet_hours(hours: tuple[int, int] | None, now: datetime) -> bool:
 
 
 PUSH_TITLES = {"mail": "Nouveau courriel", "reminder": "Rappel", "bill": "Facture à payer",
-               "briefing": "Briefing du jour", "digest": "Pendant votre absence"}
+               "briefing": "Briefing du jour", "digest": "Pendant votre absence", "deadline": "Remise à venir"}
 
 
 class DeviceHub:

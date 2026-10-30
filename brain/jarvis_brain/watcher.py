@@ -23,6 +23,7 @@ from zoneinfo import ZoneInfo
 from .briefing import _amount, build_briefing, when_due
 from .config import Settings
 from .hub import DeviceHub
+from .school import due_phrase, is_deadline
 from .services import Services
 from .sources.mail import MailSummary
 
@@ -54,7 +55,7 @@ class Watcher:
                 return json.loads(path.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 log.warning("watch_state.json illisible, on repart de zéro")
-        return {"mail_seen": {}, "reminded": [], "briefing_date": ""}
+        return {"mail_seen": {}, "reminded": [], "briefing_date": "", "deadlines_reminded": []}
 
     def _save(self) -> None:
         path = self.settings.watch_state_file
@@ -87,6 +88,7 @@ class Watcher:
             for check in [*(self._check_mail(c) for c in self.services.mail),
                           self._check_events(now) if self.services.calendar else None,
                           self._check_bills(now) if self.services.planner else None,
+                          self._check_deadlines(now) if self.services.calendar else None,
                           self._check_briefing(now)]:
                 if check is None:
                     continue
@@ -130,6 +132,32 @@ class Watcher:
                 {"title": bill.payee, "subtitle": f"{amount} · échéance {bill.due_date}".strip(" ·")}]},
                 kind="bill")
             await self.services.planner.record_bill_reminder(bill.id, stage)
+
+    # ---- remises (Moodle) ----
+
+    async def _check_deadlines(self, now: datetime) -> None:
+        days = self.settings.deadline_reminder_days
+        events = await self.services.calendar.events(now, now + timedelta(days=days + 1))
+        done: list[str] = self.state.setdefault("deadlines_reminded", [])
+        today = now.date()
+        for ev in events:
+            if not is_deadline(ev, self.settings.school_calendars):
+                continue
+            start = datetime.fromisoformat(ev.start)
+            left = (start.date() - today).days
+            if start < now or left > days:
+                continue
+            stage = "j0" if left == 0 else "j-1" if left == 1 else f"j-{days}"
+            if stage == "j0" and now.hour < 8:
+                continue  # le rappel du jour J vient le matin, pas à minuit
+            key = f"{ev.id}|{stage}"
+            if key in done:
+                continue
+            text = f"Remise : {_short(ev.title)}, {due_phrase(ev, today)}."
+            await self.hub.notify(text, {"title": "Remise à venir", "items": [
+                {"title": ev.title, "subtitle": due_phrase(ev, today), "detail": ev.description}]}, kind="deadline")
+            done.append(key)
+        self.state["deadlines_reminded"] = done[-500:]
 
     # ---- briefing du matin ----
 

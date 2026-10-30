@@ -28,6 +28,8 @@ Priorité actuelle : **ordinateur et téléphone**. La télé et la voiture vien
 - [x] Photos à l'écran : actualités (RSS), images de n'importe quelle page, plein écran piloté à la voix (zoom, suivante, ferme)
 - [x] Notifications push sur le téléphone même quand la page est fermée (Web Push)
 - [x] Contrôle du PC Windows : applis (liste blanche), son, musique, verrouillage, veille/arrêt avec confirmation vocale
+- [x] Listes (épicerie, tâches…) cochables, partagées entre appareils
+- [x] UQAM : remises Moodle et horaire de cours dans le briefing, rappels avant chaque remise
 - [ ] Résumé automatique des vieilles conversations vers la mémoire longue
 - [ ] Connexions MCP, domotique (Home Assistant)
 - [ ] Option Fish Audio (`tts/fish.py`) à côté de Piper

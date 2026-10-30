@@ -101,6 +101,8 @@ class Settings:
     quiet_hours: tuple[int, int] | None = (22, 7)  # pas de voix entre 22 h et 7 h
     briefing_time: tuple[int, int] | None = (7, 30)  # briefing du matin (None = désactivé)
     bill_reminder_days: int = 3  # rappel N jours avant l'échéance d'une facture
+    school_calendars: tuple[str, ...] = ()  # agendas d'école (vide = détection : moodle, uqam, cours…)
+    deadline_reminder_days: int = 3  # rappel N jours avant une remise
 
     # Limites (anti-abus)
     max_audio_seconds: int = 30
@@ -233,6 +235,8 @@ def load_settings(env_file: str | os.PathLike[str] | None = ".env") -> Settings:
         quiet_hours=_hours(env("JARVIS_QUIET_HOURS")),
         briefing_time=_clock(env("JARVIS_BRIEFING_TIME"), (7, 30)),
         bill_reminder_days=int(env("JARVIS_BILL_REMINDER_DAYS", "3")),
+        school_calendars=tuple(n.strip().lower() for n in env("JARVIS_SCHOOL_CALENDARS", "").split(",") if n.strip()),
+        deadline_reminder_days=int(env("JARVIS_DEADLINE_REMINDER_DAYS", "3")),
         max_audio_seconds=int(env("JARVIS_MAX_AUDIO_SECONDS", "30")),
         max_text_chars=int(env("JARVIS_MAX_TEXT_CHARS", "2000")),
     )

@@ -12,6 +12,7 @@ from datetime import date, datetime, timedelta
 
 from .config import Settings
 from .planner import Bill
+from .school import due_phrase, is_deadline
 from .services import Services
 
 log = logging.getLogger(__name__)
@@ -69,7 +70,8 @@ async def build_briefing(settings: Settings, services: Services, now: datetime) 
         items.append({"title": "Météo", "subtitle": f"{d['conditions']}, {round(d['min_c'])}° à {round(d['max_c'])}°"})
 
     if events is not None and services.calendar:
-        upcoming = [e for e in events if e.all_day or datetime.fromisoformat(e.end) > now]
+        upcoming = [e for e in events if (e.all_day or datetime.fromisoformat(e.end) > now)
+                    and not is_deadline(e, settings.school_calendars)]
         if upcoming:
             first = upcoming[0]
             n = len(upcoming)
@@ -81,6 +83,18 @@ async def build_briefing(settings: Settings, services: Services, now: datetime) 
                               "detail": e.location})
         else:
             parts.append("Votre agenda est libre aujourd'hui.")
+
+    if services.calendar:
+        week = await safe(services.calendar.events(now, start + timedelta(days=8)))
+        deadlines = [e for e in (week or []) if is_deadline(e, settings.school_calendars)]
+        if deadlines:
+            first = deadlines[0]
+            n = len(deadlines)
+            text = (f"{n} remises cette semaine" if n > 1 else "Une remise cette semaine") + \
+                f", la prochaine : {first.title}, {due_phrase(first, today)}."
+            parts.append(text)
+            for e in deadlines:
+                items.append({"title": e.title, "subtitle": "Remise · " + due_phrase(e, today)})
 
     if services.mail:
         counts = await safe(_count_important_unread(services))

@@ -48,6 +48,27 @@ Si l'adresse fuit, clique sur **Réinitialiser** sur la même page de Google Age
 
 Outlook : Paramètres → Calendrier → Calendriers partagés → **Publier un calendrier** → lien ICS. iCloud : partage public de l'agenda, puis remplace `webcal://` par `https://` (Jarvis le fait aussi tout seul).
 
+## UQAM : remises Moodle et horaire de cours
+
+**Moodle (remises, quiz, examens)** :
+1. Sur Moodle, ouvre le **Calendrier**, puis **Importer ou exporter des calendriers** → **Exporter le calendrier**.
+2. Choisis **Tous les cours** et **Événements récents et des 60 prochains jours**, puis **Obtenir l'adresse URL du calendrier**.
+3. Copie l'adresse dans `.env` :
+   ```
+   JARVIS_CALENDAR_MOODLE_URL=https://moodle.uqam.ca/calendar/export_execute.php?...
+   ```
+
+Cette adresse contient un jeton personnel : garde-la secrète, comme un mot de passe.
+
+**Horaire de cours** : si tes cours sont dans ton Google Agenda (dans un agenda nommé par exemple « Cours »), ajoute son adresse iCal avec `JARVIS_CALENDAR_COURS_URL=…`. Sinon, crée une fois tes cours comme événements récurrents dans un agenda Google « Cours ».
+
+Ce que ça donne :
+- dans le **briefing** : « Vous avez un rendez-vous aujourd'hui, le premier : INF1070 à 13 h 30. 3 remises cette semaine, la prochaine : TP2, demain à 23 h 59. »
+- des **rappels** 3 jours avant chaque remise, la veille, puis le matin du jour J ;
+- « **Quelles sont mes prochaines remises ?** » à tout moment.
+
+Les événements « … s'ouvre » de Moodle sont ignorés : ce ne sont pas des échéances.
+
 ## Météo
 
 Rien à configurer : Open-Meteo, gratuit et sans clé. La ville par défaut est `JARVIS_CITY`.
@@ -78,6 +99,9 @@ C'est l'outil `web_search` de Claude, facturé environ 1 ¢ par recherche (3 rec
 - « Montre-moi une photo de la tour Eiffel » → recherche web, puis image de la page trouvée
 - « Affiche ça sur mon téléphone » → la même chose sur un autre appareil connecté
 - « Ouvre Spotify », « mets pause », « chanson suivante », « monte le son », « volume à 30 » → sur le PC
+- « Ajoute du lait et des œufs à l'épicerie », « j'ai pris le lait », « montre ma liste » → listes partagées entre tous tes appareils
+- « Ajoute réviser INF1070 à mes tâches », « qu'est-ce qu'il me reste à faire ? »
+- « Quand est mon prochain examen ? », « mes remises de la semaine »
 - « Verrouille l'ordi » → immédiat ; « éteins l'ordi » → il demande confirmation, puis éteint dans une minute (« annule » pour l'en empêcher)
 
 Sur la page web, les boutons **Mon briefing**, **Courriels**, **Factures**, **Agenda** et **Rappels** posent ces questions pour toi.

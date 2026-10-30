@@ -1,4 +1,4 @@
-"""Rappels et factures suivies, conservés dans data/planner.json.
+"""Rappels, factures suivies et listes (épicerie, tâches…), conservés dans data/planner.json.
 
 Ce sont les seules données que Jarvis écrit lui-même (avec la mémoire) : elles
 restent sur ton PC et n'agissent sur aucun service extérieur.
@@ -35,6 +35,17 @@ class Bill:
     reminded: list[str] = field(default_factory=list)  # étapes déjà rappelées : "j-3", "j-1", "j0", "retard"
 
 
+@dataclass
+class ListItem:
+    id: str
+    text: str
+    done: bool = False
+
+
+MAX_LISTS = 30
+MAX_ITEMS = 200
+
+
 def _new_id(prefix: str) -> str:
     return f"{prefix}{secrets.token_hex(3)}"
 
@@ -45,6 +56,7 @@ class Planner:
         self._lock = asyncio.Lock()
         self.reminders: list[Reminder] = []
         self.bills: list[Bill] = []
+        self.lists: dict[str, list[ListItem]] = {}
         self._load()
 
     def _load(self) -> None:
@@ -53,11 +65,13 @@ class Planner:
         raw = json.loads(self.path.read_text(encoding="utf-8"))
         self.reminders = [Reminder(**r) for r in raw.get("reminders", [])]
         self.bills = [Bill(**b) for b in raw.get("bills", [])]
+        self.lists = {name: [ListItem(**i) for i in items] for name, items in raw.get("lists", {}).items()}
 
     def _save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
-        data = {"reminders": [asdict(r) for r in self.reminders], "bills": [asdict(b) for b in self.bills]}
+        data = {"reminders": [asdict(r) for r in self.reminders], "bills": [asdict(b) for b in self.bills],
+                "lists": {name: [asdict(i) for i in items] for name, items in self.lists.items()}}
         tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         tmp.replace(self.path)
 
@@ -131,3 +145,68 @@ class Planner:
                 if b.id == bill_id and stage not in b.reminded:
                     b.reminded.append(stage)
             self._save()
+
+    # ---- listes ----
+
+    @staticmethod
+    def list_name(name: str) -> str:
+        return " ".join(name.lower().split())[:40] or "tâches"
+
+    async def list_add(self, name: str, texts: list[str]) -> tuple[list[ListItem], list[str]]:
+        """Ajoute des éléments ; ignore ceux déjà présents (non cochés). Renvoie (ajoutés, doublons)."""
+        name = self.list_name(name)
+        async with self._lock:
+            if name not in self.lists and len(self.lists) >= MAX_LISTS:
+                raise ValueError(f"{MAX_LISTS} listes maximum.")
+            items = self.lists.setdefault(name, [])
+            existing = {i.text.lower() for i in items if not i.done}
+            added, duplicates = [], []
+            for text in texts:
+                text = " ".join(text.split())
+                if not text:
+                    continue
+                if text.lower() in existing:
+                    duplicates.append(text)
+                    continue
+                if len(items) >= MAX_ITEMS:
+                    raise ValueError(f"{MAX_ITEMS} éléments maximum par liste.")
+                item = ListItem(_new_id("l"), text)
+                items.append(item)
+                existing.add(text.lower())
+                added.append(item)
+            self._save()
+            return added, duplicates
+
+    def find_items(self, name: str, query: str) -> list[ListItem]:
+        q = query.lower().strip()
+        items = self.lists.get(self.list_name(name), [])
+        exact = [i for i in items if i.id == query or i.text.lower() == q]
+        return exact or [i for i in items if q and q in i.text.lower()]
+
+    async def list_update(self, name: str, queries: list[str], action: str) -> list[str]:
+        """action : "check" (coché), "uncheck" ou "remove". Renvoie les éléments touchés."""
+        name = self.list_name(name)
+        async with self._lock:
+            touched: list[str] = []
+            for query in queries:
+                for item in self.find_items(name, query)[:1]:
+                    if action == "remove":
+                        self.lists[name] = [i for i in self.lists[name] if i.id != item.id]
+                    else:
+                        item.done = action == "check"
+                    touched.append(item.text)
+            self._save()
+            return touched
+
+    async def list_clear(self, name: str, only_done: bool) -> int:
+        name = self.list_name(name)
+        async with self._lock:
+            items = self.lists.get(name, [])
+            kept = [i for i in items if only_done and not i.done]
+            removed = len(items) - len(kept)
+            if kept or only_done:
+                self.lists[name] = kept
+            else:
+                self.lists.pop(name, None)
+            self._save()
+            return removed

@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 from ..briefing import _amount, build_briefing, when_due
 from ..config import Settings
 from ..pc import normalize
+from ..school import due_phrase, is_deadline
 from ..services import Services
 from ..sources.mail import BILL_KEYWORDS, MailClient
 from . import Tool, ToolContext, ToolError, ask_confirmation, confirmed
@@ -300,6 +301,61 @@ async def daily_briefing(args: dict, ctx: ToolContext) -> dict:
             "note": "Dis ce briefing presque tel quel, naturellement ; la fiche est déjà affichée."}
 
 
+# ---------------------------------------------------------------- listes
+
+async def list_add(args: dict, ctx: ToolContext) -> str:
+    try:
+        added, dupes = await ctx.services.planner.list_add(args["list"], args["items"])
+    except ValueError as e:
+        raise ToolError(str(e)) from e
+    name = ctx.services.planner.list_name(args["list"])
+    out = f"Ajouté à « {name} » : {', '.join(i.text for i in added) or 'rien'}."
+    if dupes:
+        out += f" Déjà dans la liste : {', '.join(dupes)}."
+    return out
+
+
+async def list_show(args: dict, ctx: ToolContext) -> dict:
+    planner = ctx.services.planner
+    if not args.get("list"):
+        return {"lists": {name: sum(not i.done for i in items) for name, items in planner.lists.items()}}
+    name = planner.list_name(args["list"])
+    items = planner.lists.get(name)
+    if items is None:
+        raise ToolError(f"Pas de liste « {name} ». Listes : {', '.join(planner.lists) or 'aucune'}.")
+    todo = [i.text for i in items if not i.done]
+    done = [i.text for i in items if i.done]
+    if args.get("display", True) and ctx.session.has_display:
+        await ctx.session.send({"type": "display", "card": {
+            "title": name.capitalize(), "layout": "list",
+            "items": [{"title": t} for t in todo] + [{"title": t, "subtitle": "✓ fait"} for t in done]}})
+    return {"list": name, "a_faire": todo, "fait": done, "affichee": ctx.session.has_display}
+
+
+async def list_update(args: dict, ctx: ToolContext) -> str:
+    touched = await ctx.services.planner.list_update(args["list"], args["items"], args["action"])
+    if not touched:
+        raise ToolError("Aucun élément correspondant dans cette liste.")
+    verb = {"check": "Coché", "uncheck": "Décoché", "remove": "Retiré"}[args["action"]]
+    return f"{verb} : {', '.join(touched)}."
+
+
+async def list_clear(args: dict, ctx: ToolContext) -> str:
+    n = await ctx.services.planner.list_clear(args["list"], args.get("only_done", True))
+    return f"{n} élément(s) retiré(s)."
+
+
+# ---------------------------------------------------------------- école (UQAM / Moodle)
+
+async def school_deadlines(args: dict, ctx: ToolContext) -> dict:
+    now = _now(ctx)
+    events = await ctx.services.calendar.events(now, now + timedelta(days=args.get("days", 14)))
+    deadlines = [e for e in events if is_deadline(e, ctx.settings.school_calendars)]
+    return {"note": UNTRUSTED_NOTE, "count": len(deadlines), "remises": [
+        {"titre": e.title, "quand": due_phrase(e, now.date()), "date": e.start, "agenda": e.calendar,
+         "detail": e.description[:300]} for e in deadlines]}
+
+
 # ---------------------------------------------------------------- contrôle du PC
 
 async def _pc(ctx: ToolContext, fn, *args):
@@ -486,6 +542,30 @@ def build_tools(settings: Settings, services: Services) -> dict[str, Tool]:
                  _obj({"include_paid": {"type": "boolean"}}), list_bills),
             Tool("mark_bill_paid", "Marque une facture suivie comme payée (plus de rappel). Id via list_bills.",
                  _obj({"id": {"type": "string", "maxLength": 20}}, ["id"]), mark_bill_paid),
+            Tool("list_add",
+                 "Ajoute des éléments à une liste (« ajoute du lait et des œufs à l'épicerie », « ajoute réviser "
+                 "INF1070 à mes tâches »). Une liste est créée si elle n'existe pas.",
+                 _obj({
+                     "list": {"type": "string", "maxLength": 40, "description": "Nom : épicerie, tâches, à acheter…"},
+                     "items": {"type": "array", "maxItems": 30, "items": {"type": "string", "maxLength": 200}},
+                 }, ["list", "items"]),
+                 list_add),
+            Tool("list_show",
+                 "Montre une liste (affichée à l'écran si possible) ; sans `list`, donne les listes existantes.",
+                 _obj({"list": {"type": "string", "maxLength": 40}, "display": {"type": "boolean"}}),
+                 list_show),
+            Tool("list_update",
+                 "Coche (« j'ai acheté le lait »), décoche ou retire des éléments d'une liste, par leur texte.",
+                 _obj({
+                     "list": {"type": "string", "maxLength": 40},
+                     "items": {"type": "array", "maxItems": 30, "items": {"type": "string", "maxLength": 200}},
+                     "action": {"type": "string", "enum": ["check", "uncheck", "remove"]},
+                 }, ["list", "items", "action"]),
+                 list_update),
+            Tool("list_clear",
+                 "Vide une liste : par défaut seulement les éléments cochés ; only_done=false pour tout effacer.",
+                 _obj({"list": {"type": "string", "maxLength": 40}, "only_done": {"type": "boolean"}}, ["list"]),
+                 list_clear),
             Tool("daily_briefing",
                  "Briefing du jour : météo, rendez-vous, courriels non lus, factures à payer bientôt, rappels. "
                  "Pour « mon briefing », « qu'est-ce que j'ai aujourd'hui ? » ou « quoi de neuf ? ».",
@@ -516,6 +596,11 @@ def build_tools(settings: Settings, services: Services) -> dict[str, Tool]:
                  find_bills, status="Je cherche vos factures…"),
         ]
     if services.calendar:
+        tools.append(Tool(
+            "school_deadlines",
+            "Remises de travaux, quiz et examens à venir (agenda Moodle / UQAM), avec le délai restant.",
+            _obj({"days": {"type": "integer", "minimum": 1, "maximum": 120}}),
+            school_deadlines, status="Je regarde vos remises…"))
         tools += [
             Tool("get_events",
                  "Rendez-vous et événements de l'agenda sur une période (par défaut : aujourd'hui).",
