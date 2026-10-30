@@ -195,3 +195,15 @@ form { display: flex; gap: 8px; }
 .camera-count[hidden] { display: none; }
 .msg.photo { padding: 4px; }
 .msg.photo img { display: block; max-width: 220px; border-radius: 10px; }
+
+/* Tableau de bord sécurité */
+.security { background: var(--panel); border: 1px solid #24314d; border-radius: 12px; padding: 14px; gap: 8px; }
+.security[hidden] { display: none; }
+.security-head { display: flex; justify-content: space-between; align-items: center; }
+.security h2 { margin: 0; font-size: 1.1rem; }
+.security h3 { margin: 12px 0 4px; font-size: .95rem; }
+.security-tips { margin: 0; padding-left: 18px; color: var(--listen); }
+.security-row { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 8px 0; border-top: 1px solid #1e2a42; }
+.security .muted { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+.security button { padding: 6px 12px; font-size: .85rem; }

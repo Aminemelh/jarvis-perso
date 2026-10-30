@@ -26,6 +26,17 @@ Jarvis entend ce qui se dit chez toi et dans ta voiture, et il aura bientôt acc
 | **Caméra** | La caméra ne s'allume que quand tu appuies sur 📷 ou quand tu demandes « regarde » : écran plein avec compte à rebours visible, et bouton Annuler. Les photos ne sont **pas enregistrées** : seule la mention « [avec une photo] » reste dans l'historique. Format vérifié à partir des octets, 3 Mo maximum. L'en-tête `Permissions-Policy` n'autorise la caméra et le micro que pour la page Jarvis elle-même. |
 | **Mots de passe d'application** | Gmail et iCloud : un mot de passe dédié à Jarvis, révocable, jamais le mot de passe principal. |
 
+## Tableau de bord sécurité
+
+Sur un appareil admin (`JARVIS_ADMIN_DEVICES`, « pc » par défaut) : **Réglages → 🛡️ Tableau de bord sécurité**. Il affiche :
+- les **appareils** : connectés ou non, dernière connexion, adresse IP, notifications. Le bouton **Révoquer** coupe la connexion de l'appareil **immédiatement**, supprime son token et ses notifications push ;
+- les **connexions refusées** sur 24 h, par adresse IP ;
+- l'**activité de Jarvis** : chaque outil utilisé (et par quel appareil), chaque notification, chaque révocation. Le **journal d'audit** complet est dans `data/audit.jsonl`, sans aucun contenu sensible : pas de texte de courriel, pas de photo, pas de mot de passe ;
+- les **fuites de données** de tes adresses courriel via Have I Been Pwned (si `JARVIS_HIBP_API_KEY` est renseignée) ;
+- des **conseils** quand quelque chose cloche (tentatives répétées, appareil jamais utilisé, serveur exposé sans TLS).
+
+Un appareil non admin (la voiture, par exemple) ne peut ni voir ce tableau ni révoquer quoi que ce soit.
+
 ## Accéder à Jarvis depuis tes autres appareils
 
 **N'ouvre pas de port sur ta box Internet.** Utilise [Tailscale](https://tailscale.com) (gratuit pour un usage perso). C'est un réseau privé chiffré (WireGuard) entre tes appareils, qui fonctionne aussi en 4G depuis la voiture.

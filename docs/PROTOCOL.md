@@ -37,6 +37,8 @@ Le token passe dans un message et non dans l'URL : les URL finissent souvent dan
 | `{"type":"photo","data":"<base64 JPEG/PNG/WebP>","question":"…"}` | Photo jointe à la question (ou à la prochaine si `question` est absent). 3 Mo maximum. Réponse : `{"type":"photo_ok"}`. |
 | `{"type":"camera_result","request_id":"…","data":"<base64>"}` | Réponse à une demande `camera` du cerveau (ou `"error":"…"` si refus/annulation). |
 | `{"type":"visibility","visible":false}` | La page est cachée : les notifications passent par Web Push, et un appareil visible parle à la place. |
+| `{"type":"security_report"}` | (appareils admin) Tableau de bord sécurité → `{"type":"security_report","report":{…}}`. |
+| `{"type":"revoke_device","device":"telephone"}` | (appareils admin) Révoque un autre appareil et le déconnecte (code 4401) → `{"type":"revoked"}`. |
 | `{"type":"push_subscribe","subscription":{…}}` | Abonnement Web Push (`PushSubscription.toJSON()`), créé avec `auth_ok.push_key`. Réponse : `{"type":"push_ok"}`. |
 
 Avec `wake_word: true`, le cerveau transcrit la phrase et :

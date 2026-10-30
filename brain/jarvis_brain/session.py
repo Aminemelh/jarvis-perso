@@ -58,7 +58,8 @@ class DeviceSession:
 
     def __init__(self, device: str, settings: Settings, engines: Engines,
                  store: ConversationStore, send_json: SendJson, send_bytes: SendBytes,
-                 toolbox_factory: ToolBoxFactory | None = None, push=None):
+                 toolbox_factory: ToolBoxFactory | None = None, push=None, ip: str = "",
+                 close: Callable[[], Awaitable[None]] | None = None):
         self.device = device
         self.settings = settings
         self.engines = engines
@@ -74,6 +75,8 @@ class DeviceSession:
         self._background: set[asyncio.Task] = set()
         self.toolbox_factory = toolbox_factory
         self.push = push
+        self.ip = ip
+        self._close_connection = close
         self.visible = True  # la page est-elle affichée ? (sinon : notification push)
         self.current_turn = 0  # numéro du dernier tour de parole de l'utilisateur
         self.has_camera = False
@@ -207,6 +210,10 @@ class DeviceSession:
             if not future.done():
                 future.set_exception(PhotoError("Appareil déconnecté."))
         await self.cancel()
+
+    async def kick(self) -> None:
+        if self._close_connection:
+            await self._close_connection()
 
     async def request_photo(self, timeout: float = 30.0) -> tuple[bytes, str]:
         """Demande à cet appareil de prendre une photo (« Jarvis, regarde ça »)."""

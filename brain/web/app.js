@@ -124,6 +124,74 @@ const viewer = {
   },
 };
 
+// ---------- tableau de bord sécurité (appareils admin) ----------
+const security = {
+  el(tag, text, cls) {
+    const e = document.createElement(tag);
+    if (text !== undefined) e.textContent = text;
+    if (cls) e.className = cls;
+    return e;
+  },
+  when(ts) {
+    return ts ? new Date(ts * 1000).toLocaleString("fr-CA", { dateStyle: "short", timeStyle: "short" }) : "jamais";
+  },
+  render(r) {
+    const root = $("security");
+    root.replaceChildren();
+    root.hidden = false;
+    const head = this.el("div", undefined, "security-head");
+    head.append(this.el("h2", "🛡️ Sécurité"));
+    const close = this.el("button", "Fermer");
+    close.type = "button";
+    close.addEventListener("click", () => { root.hidden = true; });
+    head.append(close);
+    root.append(head);
+
+    const tips = this.el("ul", undefined, "security-tips");
+    for (const t of r.conseils) tips.append(this.el("li", t));
+    root.append(tips);
+
+    root.append(this.el("h3", "Appareils"));
+    for (const d of r.appareils) {
+      const row = this.el("div", undefined, "security-row");
+      const info = this.el("div");
+      info.append(this.el("strong", `${d.connecte ? "🟢" : "⚪"} ${d.nom}${d.admin ? " (admin)" : ""}`));
+      info.append(this.el("div", `Dernière connexion : ${this.when(d.derniere_connexion)}${d.ip ? " · " + d.ip : ""}`
+        + (d.notifications_push ? " · notifications" : ""), "muted"));
+      row.append(info);
+      const revoke = this.el("button", "Révoquer", "danger");
+      revoke.type = "button";
+      revoke.addEventListener("click", () => {
+        if (confirm(`Révoquer « ${d.nom} » ? Il sera déconnecté immédiatement et devra recevoir un nouveau token.`)) {
+          brain.send({ type: "revoke_device", device: d.nom });
+        }
+      });
+      if (d.nom !== this.me) row.append(revoke);
+      root.append(row);
+    }
+
+    root.append(this.el("h3", `Connexions refusées (24 h) : ${r.echecs_24h.total}`));
+    for (const [ip, n] of r.echecs_24h.par_ip) root.append(this.el("div", `${ip} : ${n} tentative(s)`, "muted"));
+
+    root.append(this.el("h3", "Fuites de données (Have I Been Pwned)"));
+    if (!r.fuites.disponible) root.append(this.el("div", r.fuites.raison, "muted"));
+    else for (const [address, breaches] of Object.entries(r.fuites.adresses)) {
+      const text = Array.isArray(breaches)
+        ? (breaches.length ? `${breaches.length} fuite(s) : ` + breaches.map((b) => `${b.nom} (${b.date})`).join(", ") : "aucune fuite connue ✓")
+        : breaches.erreur;
+      root.append(this.el("div", `${address} — ${text}`));
+    }
+
+    root.append(this.el("h3", "Activité récente de Jarvis"));
+    if (!r.activite.length) root.append(this.el("div", "Aucune action ces 7 derniers jours.", "muted"));
+    for (const a of r.activite.slice(0, 30)) {
+      const what = a.type === "tool" ? `${a.tool} (${a.outcome})` : a.type === "notify" ? `notification : ${a.text}` : `révocation de ${a.target}`;
+      root.append(this.el("div", `${this.when(a.ts)} · ${a.device || "jarvis"} · ${what}`, "muted"));
+    }
+    root.scrollIntoView({ behavior: "smooth" });
+  },
+};
+
 // ---------- caméra : « Jarvis, regarde ça » ----------
 const camera = {
   stream: null,
@@ -349,6 +417,8 @@ function onMessage(msg) {
     case "auth_ok":
       ui.status(`En ligne · ${msg.device}`, true);
       push.setup(msg.push_key);
+      $("security-btn").hidden = !msg.admin;
+      security.me = msg.device;
       brain.send({ type: "visibility", visible: !document.hidden });
       ui.hint(prefs.handsfree ? "J'écoute. Dis « Jarvis… »" : "Touche le cercle pour parler");
       break;
@@ -389,6 +459,13 @@ function onMessage(msg) {
     case "notify":
       if (msg.card) ui.card(msg.card, "notify"); else ui.add("system", msg.text);
       break;  // page cachée : le cerveau envoie une notification push à la place
+    case "security_report":
+      security.render(msg.report);
+      break;
+    case "revoked":
+      ui.add("system", `Appareil « ${msg.device} » révoqué et déconnecté.`);
+      brain.send({ type: "security_report" });
+      break;
     case "push_ok":
       ui.add("system", "Notifications activées sur cet appareil.");
       $("push").textContent = "Notifications activées ✓";
@@ -555,6 +632,7 @@ $("text-form").addEventListener("submit", (e) => {
 });
 
 $("camera-btn").addEventListener("click", () => camera.manual());
+$("security-btn").addEventListener("click", () => brain.send({ type: "security_report" }));
 $("camera-cancel").addEventListener("click", () => camera.stop());
 $("camera-shoot").addEventListener("click", () => { if (camera.resolve) camera.resolve(); });
 $("camera-flip").addEventListener("click", async () => {

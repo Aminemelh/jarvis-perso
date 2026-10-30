@@ -47,6 +47,8 @@
         <button type="button" data-ask="Quels sont mes rappels à venir ?">Rappels</button>
       </nav>
 
+      <section id="security" class="security" hidden aria-label="Tableau de bord sécurité"></section>
+
       <div id="cards" class="cards" aria-live="polite"></div>
 
       <div id="log" class="log" aria-live="polite"></div>
@@ -61,6 +63,7 @@
         <summary>Réglages</summary>
         <label class="toggle"><input id="voice" type="checkbox" checked><span>Réponses vocales</span></label>
         <button id="push" type="button" hidden>Activer les notifications sur cet appareil</button>
+        <button id="security-btn" type="button" hidden>🛡️ Tableau de bord sécurité</button>
         <button id="forget" type="button" class="danger">Oublier le token de cet appareil</button>
       </details>
     </section>

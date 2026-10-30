@@ -70,6 +70,8 @@ Ajouter Fish Audio, par exemple, revient à écrire `tts/fish.py` avec une méth
 | `pc.py` | contrôle du PC Windows (liste blanche d'actions, touches multimédia, verrouillage) |
 | `push.py` | notifications Web Push (VAPID, abonnements par appareil) |
 | `planner.py` | rappels, factures suivies et listes (`data/planner.json`) |
+| `audit.py` | journal d'audit (`data/audit.jsonl`), sans contenu sensible |
+| `security.py` | rapport du tableau de bord sécurité, vérification Have I Been Pwned |
 | `vision.py` | photos des appareils (validation, blocs image pour Claude) |
 | `school.py` | détection des remises Moodle / UQAM dans les agendas |
 | `briefing.py` | briefing du jour, composé sans appeler Claude (gratuit et instantané) |

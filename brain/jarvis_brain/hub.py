@@ -38,10 +38,12 @@ PUSH_TITLES = {"mail": "Nouveau courriel", "reminder": "Rappel", "bill": "Factur
 
 
 class DeviceHub:
-    def __init__(self, settings: Settings, store: ConversationStore, push: PushService | None = None):
+    def __init__(self, settings: Settings, store: ConversationStore, push: PushService | None = None,
+                 audit=None):
         self.settings = settings
         self.store = store
         self.push = push
+        self.audit = audit
         self._sessions: set[DeviceSession] = set()
 
     # ---- connexions ----
@@ -55,6 +57,13 @@ class DeviceHub:
     def connected(self) -> list[DeviceSession]:
         return sorted(self._sessions, key=lambda s: s.last_active, reverse=True)
 
+    async def disconnect(self, device: str) -> int:
+        """Coupe immédiatement toutes les connexions d'un appareil (token révoqué)."""
+        sessions = [s for s in self.connected() if s.device == device]
+        for s in sessions:
+            await s.kick()
+        return len(sessions)
+
     def find(self, device: str) -> DeviceSession | None:
         device = device.lower().strip()
         return next((s for s in self.connected() if s.device == device), None)
@@ -65,6 +74,8 @@ class DeviceHub:
         """Prévient l'utilisateur. Renvoie le nom de l'appareil qui a parlé, ou « attente »."""
         now = datetime.now(ZoneInfo(self.settings.timezone))
         await self.store.append_note("jarvis", f"[Notification] {text}")
+        if self.audit:
+            self.audit.record("notify", kind=kind, text=text[:80])
         sessions = self.connected()
         await self._push(text, kind, sessions)
         if not sessions:

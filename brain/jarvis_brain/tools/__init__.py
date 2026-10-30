@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 if TYPE_CHECKING:
+    from ..audit import AuditLog
     from ..config import Settings
     from ..hub import DeviceHub
     from ..services import Services
@@ -33,6 +34,7 @@ class ToolContext:
     services: Services
     hub: DeviceHub
     session: DeviceSession
+    audit: AuditLog | None = None
 
 
 Handler = Callable[[dict, ToolContext], Awaitable[Any]]
@@ -156,14 +158,25 @@ class ToolBox:
             if tool.status:
                 await self.context.session.send({"type": "status", "text": tool.status})
             result = await tool.handler(raw_input, self.context)
+            self._audit(name, raw_input, "ok")
             if isinstance(result, (str, list)):  # liste = blocs de contenu (ex. une photo + du texte)
                 content = result
             else:
                 content = json.dumps(result, ensure_ascii=False, default=str)
             return {"type": "tool_result", "tool_use_id": tool_use_id, "content": content}
         except ToolError as e:
+            self._audit(name, raw_input, "refusé")
             return {"type": "tool_result", "tool_use_id": tool_use_id, "content": str(e), "is_error": True}
         except Exception as e:  # noqa: BLE001 - une panne d'outil ne doit pas faire tomber la réponse
+            self._audit(name, raw_input, "erreur")
             log.exception("Outil %s en échec", name)
             return {"type": "tool_result", "tool_use_id": tool_use_id, "is_error": True,
                     "content": f"L'outil {name} a échoué ({type(e).__name__}). Réessaie plus tard."}
+
+    def _audit(self, name: str, raw_input: Any, outcome: str) -> None:
+        if self.context.audit is None:
+            return
+        from ..audit import summarize
+
+        self.context.audit.record("tool", device=self.context.session.device, tool=name,
+                                  args=summarize(raw_input if isinstance(raw_input, dict) else {}), outcome=outcome)

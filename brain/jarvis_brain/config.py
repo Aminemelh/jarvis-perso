@@ -98,6 +98,10 @@ class Settings:
     pc_control: bool = sys.platform == "win32"  # contrôle du PC où tourne le cerveau
     pc_apps: str = ""  # applis supplémentaires : "obs=obs64.exe;notion=notion:"
 
+    # Sécurité
+    admin_devices: tuple[str, ...] = ("pc",)  # appareils autorisés à voir le tableau de bord sécurité
+    hibp_api_key: str = ""  # Have I Been Pwned (facultatif, payant)
+
     # Surveillance en arrière-plan (courriels, rappels de rendez-vous)
     watch_interval_seconds: int = 120
     reminder_minutes: int = 30
@@ -244,6 +248,8 @@ def load_settings(env_file: str | os.PathLike[str] | None = ".env") -> Settings:
         news_feeds=_feeds(env("JARVIS_NEWS_FEEDS")),
         pc_control=_bool(env("JARVIS_PC_CONTROL"), sys.platform == "win32"),
         pc_apps=env("JARVIS_PC_APPS", ""),
+        admin_devices=tuple(d.strip().lower() for d in env("JARVIS_ADMIN_DEVICES", "pc").split(",") if d.strip()),
+        hibp_api_key=env("JARVIS_HIBP_API_KEY", ""),
         watch_interval_seconds=int(env("JARVIS_WATCH_INTERVAL", "120")),
         reminder_minutes=int(env("JARVIS_REMINDER_MINUTES", "30")),
         quiet_hours=_hours(env("JARVIS_QUIET_HOURS")),

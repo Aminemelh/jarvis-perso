@@ -32,6 +32,7 @@ Priorité actuelle : **ordinateur et téléphone**. La télé et la voiture vien
 - [x] UQAM : remises Moodle et horaire de cours dans le briefing, rappels avant chaque remise
 - [x] Vision : photo jointe (📷) ou prise à la demande (« regarde ça »), analysée par Claude
 - [x] Répondre aux courriels / en écrire, avec brouillon verrouillé et confirmation vocale
+- [x] Tableau de bord sécurité : journal d'audit, appareils, révocation immédiate, connexions refusées, fuites (HIBP)
 - [ ] Résumé automatique des vieilles conversations vers la mémoire longue
 - [ ] Connexions MCP, domotique (Home Assistant)
 - [ ] Option Fish Audio (`tts/fish.py`) à côté de Piper
