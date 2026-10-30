@@ -21,9 +21,10 @@ Priorité actuelle : **ordinateur et téléphone**. La télé et la voiture vien
 - [x] Surveillance en arrière-plan : nouveaux courriels, factures, rappels de rendez-vous
 - [x] Notifications sur le dernier appareil utilisé, file d'attente si tout est hors ligne, heures calmes
 - [ ] **À toi de tester** avec tes vrais comptes (docs/CONNECTIONS.md)
-- [ ] Suivi des factures : liste persistante « payée / à payer » avec rappel avant l'échéance
-- [ ] Briefing du matin (« Bonjour Monsieur, aujourd'hui vous avez… »)
-- [ ] Minuteurs et rappels vocaux (« rappelle-moi dans 20 minutes… »)
+- [x] Suivi des factures : « à payer / payée », rappels à J-3, la veille, le jour J et en cas de retard
+- [x] Briefing du matin (« Bonjour Monsieur, aujourd'hui… ») automatique et à la demande
+- [x] Rappels vocaux (« rappelle-moi dans 20 minutes… »)
+- [x] Boutons raccourcis sur la page web (briefing, courriels, factures, agenda, rappels)
 - [ ] Notifications push sur le téléphone même quand la page est fermée (Web Push)
 - [ ] Résumé automatique des vieilles conversations vers la mémoire longue
 - [ ] Connexions MCP, domotique (Home Assistant)

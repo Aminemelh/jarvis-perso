@@ -54,14 +54,14 @@ class Tool:
         }
 
 
-_TYPES = {"string": str, "integer": int, "boolean": bool, "array": list, "object": dict}
+_TYPES = {"string": str, "integer": int, "number": (int, float), "boolean": bool, "array": list, "object": dict}
 
 
 def validate(schema: dict, value: Any, path: str = "input") -> None:
     """Validation minimale d'un JSON Schema (types, required, propriétés inconnues, bornes)."""
     expected = schema.get("type")
     py = _TYPES.get(expected)
-    if py and (not isinstance(value, py) or (expected == "integer" and isinstance(value, bool))):
+    if py and (not isinstance(value, py) or (expected in {"integer", "number"} and isinstance(value, bool))):
         raise ToolError(f"{path} : type {expected} attendu")
     if expected == "object":
         props = schema.get("properties", {})
@@ -77,7 +77,7 @@ def validate(schema: dict, value: Any, path: str = "input") -> None:
             raise ToolError(f"{path} : {schema['maxItems']} éléments maximum")
         for i, item in enumerate(value):
             validate(schema.get("items", {}), item, f"{path}[{i}]")
-    elif expected == "integer":
+    elif expected in {"integer", "number"}:
         if "minimum" in schema and value < schema["minimum"]:
             raise ToolError(f"{path} : minimum {schema['minimum']}")
         if "maximum" in schema and value > schema["maximum"]:

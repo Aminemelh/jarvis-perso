@@ -66,7 +66,9 @@ Ajouter Fish Audio, par exemple, revient à écrire `tts/fish.py` avec une méth
 | `sources/` | accès aux données : `mail.py` (IMAP), `calendar.py` (iCal), `weather.py` (Open-Meteo) |
 | `services.py` | regroupe les sources configurées dans `.env` |
 | `hub.py` | appareils connectés, dernier utilisé, notifications et file d'attente |
-| `watcher.py` | surveillance en arrière-plan (nouveaux courriels, rappels de rendez-vous) |
+| `watcher.py` | surveillance en arrière-plan (courriels, rendez-vous, rappels, factures, briefing) |
+| `planner.py` | rappels et factures suivies (`data/planner.json`) |
+| `briefing.py` | briefing du jour, composé sans appeler Claude (gratuit et instantané) |
 
 ## Outils : comment Jarvis va chercher l'information
 

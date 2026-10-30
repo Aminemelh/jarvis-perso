@@ -75,7 +75,7 @@ def create_app(settings: Settings, engines: Engines | None = None, services: Ser
             log.warning("Aucun appareil enregistré. Crée un token : python -m jarvis_brain token add pc")
         log.info("Outils : %s", ", ".join(sorted(tools)) or "aucun")
         watcher_task = None
-        if watch and (services.mail or services.calendar):
+        if watch:  # rappels et briefing même sans courriel ni agenda
             watcher_task = asyncio.create_task(Watcher(settings, services, hub).run())
         yield
         if watcher_task:

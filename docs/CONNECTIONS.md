@@ -65,12 +65,21 @@ C'est l'outil `web_search` de Claude, facturé environ 1 ¢ par recherche (3 rec
 - « Affiche ma semaine sur mon téléphone » → la fiche apparaît sur l'appareil nommé (il doit être connecté)
 - « Retiens que je préfère les rendez-vous le matin » → écrit dans `data/memory/`
 - « Quel temps fera-t-il demain ? »
+- « Rappelle-moi dans 20 minutes de sortir le linge », « Demain à 9 h, rappelle-moi d'appeler le dentiste »
+- « Suis cette facture » (après qu'il en a trouvé une) → rappel 3 jours avant l'échéance, la veille, le jour J
+- « J'ai payé Hydro-Québec » → plus de rappel
+- « Mon briefing » → météo, rendez-vous, courriels, factures et rappels du jour
+
+Sur la page web, les boutons **Mon briefing**, **Courriels**, **Factures**, **Agenda** et **Rappels** posent ces questions pour toi.
 
 ## Ce qu'il fait tout seul
 
 Toutes les 2 minutes (`JARVIS_WATCH_INTERVAL`) :
 - **Nouveau courriel important** (les infolettres sont ignorées, sauf si c'est une facture) : « Vous avez reçu une facture d'Hydro-Québec… »
 - **Rendez-vous dans 30 minutes** (`JARVIS_REMINDER_MINUTES`) : « Rappel : dentiste dans 20 minutes, Clinique du Plateau. »
+- **Tes rappels**, à l'heure demandée (vérifiés toutes les 15 secondes).
+- **Factures suivies** : 3 jours avant l'échéance, la veille, le jour J et en cas de retard, jusqu'à ce que tu dises qu'elle est payée.
+- **Briefing du matin** à 7 h 30 (`JARVIS_BRIEFING_TIME`) : « Bonjour Monsieur. Aujourd'hui à Montréal : pluie… »
 
 La notification est **dite sur le dernier appareil que tu as utilisé**, et **affichée sur tous** ceux qui ont un écran. Si aucun appareil n'est connecté, elle est gardée et te sera dite à la prochaine connexion (« Pendant votre absence… »). Entre 22 h et 7 h (`JARVIS_QUIET_HOURS`), Jarvis affiche sans parler.
 

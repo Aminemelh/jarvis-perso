@@ -385,9 +385,7 @@ $("voice").addEventListener("change", (e) => {
   if (!prefs.voice) player.stop();
 });
 
-$("text-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const text = $("text").value.trim();
+async function ask(text) {
   if (!text || !brain) return;
   if (prefs.voice && !audioCtx) {
     audioCtx = new AudioContext();
@@ -396,6 +394,15 @@ $("text-form").addEventListener("submit", async (e) => {
   if (audioCtx) await audioCtx.resume();
   interrupt();
   brain.send({ type: "text", text });
+}
+
+for (const btn of document.querySelectorAll(".quick button")) {
+  btn.addEventListener("click", () => ask(btn.dataset.ask));
+}
+
+$("text-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  ask($("text").value.trim());
   $("text").value = "";
 });
 

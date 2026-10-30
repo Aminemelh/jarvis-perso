@@ -87,6 +87,8 @@ class Settings:
     watch_interval_seconds: int = 120
     reminder_minutes: int = 30
     quiet_hours: tuple[int, int] | None = (22, 7)  # pas de voix entre 22 h et 7 h
+    briefing_time: tuple[int, int] | None = (7, 30)  # briefing du matin (None = désactivé)
+    bill_reminder_days: int = 3  # rappel N jours avant l'échéance d'une facture
 
     # Limites (anti-abus)
     max_audio_seconds: int = 30
@@ -108,6 +110,10 @@ class Settings:
     @property
     def watch_state_file(self) -> Path:
         return self.data_dir / "watch_state.json"
+
+    @property
+    def planner_file(self) -> Path:
+        return self.data_dir / "planner.json"
 
     @property
     def inbox_file(self) -> Path:
@@ -136,6 +142,17 @@ def _calendars(environ: dict[str, str]) -> tuple[CalendarSource, ...]:
         if m and value:
             found.append(CalendarSource(m.group(1).lower(), value))
     return tuple(found)
+
+
+def _clock(value: str | None, default: tuple[int, int] | None) -> tuple[int, int] | None:
+    """« 07:30 » -> (7, 30) ; « off » -> None."""
+    if value is None:
+        return default
+    value = value.strip().lower()
+    if not value or value in {"off", "none", "non"}:
+        return None
+    hour, _, minute = value.replace("h", ":").partition(":")
+    return int(hour), int(minute or 0)
 
 
 def _hours(value: str | None) -> tuple[int, int] | None:
@@ -187,6 +204,8 @@ def load_settings(env_file: str | os.PathLike[str] | None = ".env") -> Settings:
         watch_interval_seconds=int(env("JARVIS_WATCH_INTERVAL", "120")),
         reminder_minutes=int(env("JARVIS_REMINDER_MINUTES", "30")),
         quiet_hours=_hours(env("JARVIS_QUIET_HOURS")),
+        briefing_time=_clock(env("JARVIS_BRIEFING_TIME"), (7, 30)),
+        bill_reminder_days=int(env("JARVIS_BILL_REMINDER_DAYS", "3")),
         max_audio_seconds=int(env("JARVIS_MAX_AUDIO_SECONDS", "30")),
         max_text_chars=int(env("JARVIS_MAX_TEXT_CHARS", "2000")),
     )

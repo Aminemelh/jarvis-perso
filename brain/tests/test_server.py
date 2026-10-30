@@ -32,7 +32,7 @@ def env(tmp_path):
     settings = dataclasses.replace(Settings(), data_dir=tmp_path, llm_backend="echo")
     token = DeviceRegistry(settings.devices_file).add("test-pc")
     stt = FakeSTT()
-    app = create_app(settings, Engines(llm=EchoLLM(), stt=stt, tts=FakeTTS()))
+    app = create_app(settings, Engines(llm=EchoLLM(), stt=stt, tts=FakeTTS()), watch=False)
     return TestClient(app), token, stt, settings
 
 

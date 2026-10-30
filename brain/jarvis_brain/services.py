@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from zoneinfo import ZoneInfo
 
 from .config import Settings
+from .planner import Planner
 from .sources.calendar import CalendarClient
 from .sources.mail import MailClient
 from .sources.weather import WeatherClient
@@ -16,6 +17,7 @@ class Services:
     mail: list[MailClient] = field(default_factory=list)
     calendar: CalendarClient | None = None
     weather: WeatherClient | None = None
+    planner: Planner | None = None
 
     def mail_client(self, account: str) -> MailClient:
         for client in self.mail:
@@ -30,4 +32,5 @@ def create_services(settings: Settings) -> Services:
         mail=[MailClient(a) for a in settings.mail_accounts],
         calendar=CalendarClient(settings.calendars, tz) if settings.calendars else None,
         weather=WeatherClient(settings.timezone),
+        planner=Planner(settings.planner_file),
     )

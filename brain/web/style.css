@@ -136,3 +136,11 @@ form { display: flex; gap: 8px; }
 .item-subtitle { color: var(--muted); font-size: .9rem; }
 .item-detail { color: var(--muted); font-size: .85rem; margin-top: 4px; overflow-wrap: anywhere;
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Raccourcis */
+.quick { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.quick button {
+  background: var(--panel); color: var(--text); border: 1px solid #24314d;
+  padding: 8px 14px; border-radius: 999px; font-weight: 500; font-size: .9rem;
+}
+.quick button:hover, .quick button:focus-visible { border-color: var(--accent); }

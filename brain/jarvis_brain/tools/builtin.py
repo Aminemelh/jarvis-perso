@@ -1,4 +1,4 @@
-"""Outils de base : courriels, factures, agenda, météo, affichage, mémoire."""
+"""Outils de base : courriels, factures, agenda, météo, affichage, mémoire, rappels, briefing."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import re
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from ..briefing import _amount, build_briefing, when_due
 from ..config import Settings
 from ..services import Services
 from ..sources.mail import BILL_KEYWORDS, MailClient
@@ -149,6 +150,84 @@ async def remember(args: dict, ctx: ToolContext) -> str:
     return f"Noté dans la mémoire « {topic} »."
 
 
+# ---------------------------------------------------------------- rappels
+
+def _parse_when(value: str, ctx: ToolContext) -> datetime:
+    try:
+        when = datetime.fromisoformat(value)
+    except ValueError as e:
+        raise ToolError("when doit être une date et heure ISO, ex. 2026-11-03T09:00") from e
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=ZoneInfo(ctx.settings.timezone))
+    now = _now(ctx)
+    if when < now - timedelta(minutes=1):
+        raise ToolError(f"Cette heure est déjà passée (il est {now:%Y-%m-%d %H:%M}).")
+    if when > now + timedelta(days=366):
+        raise ToolError("Un rappel ne peut pas être fixé à plus d'un an.")
+    return when
+
+
+async def set_reminder(args: dict, ctx: ToolContext) -> dict:
+    when = _parse_when(args["when"], ctx)
+    r = await ctx.services.planner.add_reminder(" ".join(args["text"].split()), when, ctx.session.device)
+    return {"ok": True, "id": r.id, "text": r.text, "when": r.due}
+
+
+async def list_reminders(args: dict, ctx: ToolContext) -> dict:
+    pending = ctx.services.planner.pending_reminders()
+    return {"count": len(pending), "reminders": [{"id": r.id, "text": r.text, "when": r.due} for r in pending]}
+
+
+async def cancel_reminder(args: dict, ctx: ToolContext) -> str:
+    if not await ctx.services.planner.cancel_reminder(args["id"]):
+        raise ToolError("Rappel introuvable (déjà passé ou mauvais id). Utilise list_reminders.")
+    return "Rappel annulé."
+
+
+# ---------------------------------------------------------------- factures suivies
+
+async def track_bill(args: dict, ctx: ToolContext) -> dict:
+    try:
+        due = date.fromisoformat(args["due_date"])
+    except ValueError as e:
+        raise ToolError("due_date doit être au format AAAA-MM-JJ.") from e
+    amount = args.get("amount")
+    if amount is not None and not 0 <= amount < 1_000_000:
+        raise ToolError("Montant invalide.")
+    bill, created = await ctx.services.planner.add_bill(
+        " ".join(args["payee"].split()), due, amount, args.get("currency", "CAD"), args.get("email_id", ""))
+    return {"ok": True, "id": bill.id, "new": created,
+            "message": "Facture ajoutée au suivi." if created else "Cette facture était déjà suivie (mise à jour)."}
+
+
+async def list_bills(args: dict, ctx: ToolContext) -> dict:
+    today = _now(ctx).date()
+    bills = ctx.services.planner.bills if args.get("include_paid") else ctx.services.planner.unpaid_bills()
+    return {"count": len(bills), "bills": [
+        {"id": b.id, "payee": b.payee, "amount": _amount(b) or None, "due_date": b.due_date,
+         "status": "payée" if b.paid else when_due(date.fromisoformat(b.due_date), today)}
+        for b in sorted(bills, key=lambda b: b.due_date)]}
+
+
+async def mark_bill_paid(args: dict, ctx: ToolContext) -> str:
+    bill = await ctx.services.planner.mark_paid(args["id"])
+    if bill is None:
+        raise ToolError("Facture introuvable. Utilise list_bills pour l'id.")
+    return f"Facture {bill.payee} marquée comme payée : plus de rappel."
+
+
+# ---------------------------------------------------------------- briefing
+
+async def daily_briefing(args: dict, ctx: ToolContext) -> dict:
+    text, card = await build_briefing(ctx.settings, ctx.services, _now(ctx))
+    shown = False
+    if ctx.session.has_display:
+        await ctx.session.send({"type": "display", "card": card})
+        shown = True
+    return {"briefing": text, "shown_on_screen": shown,
+            "note": "Dis ce briefing presque tel quel, naturellement ; la fiche est déjà affichée."}
+
+
 # ---------------------------------------------------------------- catalogue
 
 def build_tools(settings: Settings, services: Services) -> dict[str, Tool]:
@@ -185,6 +264,40 @@ def build_tools(settings: Settings, services: Services) -> dict[str, Tool]:
              }),
              get_weather, status="Je regarde la météo…"),
     ]
+    if services.planner:
+        tools += [
+            Tool("set_reminder",
+                 "Programme un rappel vocal (« rappelle-moi dans 20 minutes de sortir le linge », « demain à 9 h, "
+                 "appeler le dentiste »). Calcule `when` à partir de la date et de l'heure actuelles du contexte.",
+                 _obj({
+                     "text": {"type": "string", "maxLength": 300, "description": "Ce qu'il faudra rappeler."},
+                     "when": {"type": "string", "description": "Date et heure locales ISO, ex. 2026-11-03T09:00"},
+                 }, ["text", "when"]),
+                 set_reminder),
+            Tool("list_reminders", "Liste les rappels à venir (avec leur id).", _obj({}), list_reminders),
+            Tool("cancel_reminder", "Annule un rappel à venir par son id (voir list_reminders).",
+                 _obj({"id": {"type": "string", "maxLength": 20}}, ["id"]), cancel_reminder),
+            Tool("track_bill",
+                 "Ajoute une facture au suivi : Jarvis rappellera avant l'échéance (3 jours avant, la veille, "
+                 "le jour même, puis en cas de retard). Utilise-le quand l'utilisateur le demande, ou propose-le "
+                 "après avoir trouvé une facture avec une date limite. Lis le courriel pour le montant et la date.",
+                 _obj({
+                     "payee": {"type": "string", "maxLength": 100, "description": "Fournisseur, ex. Hydro-Québec"},
+                     "due_date": {"type": "string", "description": "Date limite AAAA-MM-JJ"},
+                     "amount": {"type": "number"},
+                     "currency": {"type": "string", "enum": ["CAD", "USD", "EUR"]},
+                     "email_id": {"type": "string", "maxLength": 100},
+                 }, ["payee", "due_date"]),
+                 track_bill, status="J'ajoute la facture au suivi…"),
+            Tool("list_bills", "Factures suivies à payer (ou toutes avec include_paid), avec leur échéance.",
+                 _obj({"include_paid": {"type": "boolean"}}), list_bills),
+            Tool("mark_bill_paid", "Marque une facture suivie comme payée (plus de rappel). Id via list_bills.",
+                 _obj({"id": {"type": "string", "maxLength": 20}}, ["id"]), mark_bill_paid),
+            Tool("daily_briefing",
+                 "Briefing du jour : météo, rendez-vous, courriels non lus, factures à payer bientôt, rappels. "
+                 "Pour « mon briefing », « qu'est-ce que j'ai aujourd'hui ? » ou « quoi de neuf ? ».",
+                 _obj({}), daily_briefing, status="Je prépare votre briefing…"),
+        ]
     if services.mail:
         tools += [
             Tool("check_emails",
