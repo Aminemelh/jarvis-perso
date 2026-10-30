@@ -36,6 +36,14 @@ class CalendarSource:
     url: str
 
 
+# Flux d'actualité par défaut (modifiables avec JARVIS_NEWS_FEEDS).
+DEFAULT_NEWS_FEEDS = (
+    ("Radio-Canada", "https://ici.radio-canada.ca/rss/4159"),
+    ("Le Devoir", "https://www.ledevoir.com/rss/manchettes.xml"),
+    ("La Presse", "https://www.lapresse.ca/actualites/rss"),
+)
+
+
 @dataclass(frozen=True)
 class Settings:
     # Réseau
@@ -82,6 +90,7 @@ class Settings:
     web_search: bool = True
     mail_accounts: tuple[MailAccount, ...] = ()
     calendars: tuple[CalendarSource, ...] = ()
+    news_feeds: tuple[tuple[str, str], ...] = DEFAULT_NEWS_FEEDS
 
     # Surveillance en arrière-plan (courriels, rappels de rendez-vous)
     watch_interval_seconds: int = 120
@@ -155,6 +164,18 @@ def _clock(value: str | None, default: tuple[int, int] | None) -> tuple[int, int
     return int(hour), int(minute or 0)
 
 
+def _feeds(value: str | None) -> tuple[tuple[str, str], ...]:
+    """« Nom|https://…, Autre|https://… » ; vide = flux par défaut."""
+    if not value or not value.strip():
+        return DEFAULT_NEWS_FEEDS
+    feeds = []
+    for part in value.split(","):
+        name, _, url = part.strip().partition("|")
+        if url.startswith(("http://", "https://")):
+            feeds.append((name.strip() or url, url.strip()))
+    return tuple(feeds) or DEFAULT_NEWS_FEEDS
+
+
 def _hours(value: str | None) -> tuple[int, int] | None:
     if value is None:
         return (22, 7)
@@ -201,6 +222,7 @@ def load_settings(env_file: str | os.PathLike[str] | None = ".env") -> Settings:
         web_search=_bool(env("JARVIS_WEB_SEARCH"), True),
         mail_accounts=_mail_accounts(dict(os.environ)),
         calendars=_calendars(dict(os.environ)),
+        news_feeds=_feeds(env("JARVIS_NEWS_FEEDS")),
         watch_interval_seconds=int(env("JARVIS_WATCH_INTERVAL", "120")),
         reminder_minutes=int(env("JARVIS_REMINDER_MINUTES", "30")),
         quiet_hours=_hours(env("JARVIS_QUIET_HOURS")),

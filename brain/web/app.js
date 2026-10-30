@@ -28,7 +28,7 @@ const ui = {
   card(card, kind = "") {
     if (!card) return;
     const box = document.createElement("article");
-    box.className = "card " + kind;
+    box.className = "card " + kind + (card.layout === "gallery" ? " gallery" : "");
     const title = document.createElement("h2");
     title.textContent = card.title || "";
     box.appendChild(title);
@@ -37,9 +37,21 @@ const ui = {
       p.textContent = card.text;
       box.appendChild(p);
     }
-    for (const item of card.items || []) {
+    (card.items || []).forEach((item, index) => {
       const row = document.createElement("div");
       row.className = "card-item";
+      // Images : uniquement des data:URL fournies par le cerveau (la CSP bloque tout le reste).
+      if (item.image && item.image.startsWith("data:image/")) {
+        const img = document.createElement("img");
+        img.src = item.image;
+        img.alt = item.title || "";
+        img.loading = "lazy";
+        img.addEventListener("click", () => viewer.open(card, index));
+        const num = document.createElement("span");
+        num.className = "item-number";
+        num.textContent = String(index + 1);
+        row.append(img, num);
+      }
       for (const [cls, value] of [["item-title", item.title], ["item-subtitle", item.subtitle], ["item-detail", item.detail]]) {
         if (!value) continue;
         const el = document.createElement("div");
@@ -48,7 +60,8 @@ const ui = {
         row.appendChild(el);
       }
       box.appendChild(row);
-    }
+    });
+    if (!kind) screen.card = card;  // la fiche visée par « zoom sur la première »
     $("cards").prepend(box);
     while ($("cards").children.length > 5) $("cards").lastChild.remove();
     box.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -60,6 +73,54 @@ const ui = {
     $("log").appendChild(div);
     $("log").scrollTop = $("log").scrollHeight;
     return div;
+  },
+};
+
+// ---------- plein écran : visionneuse pilotable à la voix ----------
+const screen = {
+  card: null,
+  control(action, item) {
+    if (action === "zoom" && this.card) viewer.open(this.card, (item || 1) - 1);
+    else if (action === "next") viewer.step(1);
+    else if (action === "previous") viewer.step(-1);
+    else if (action === "close") viewer.close();
+    else if (action === "clear") { viewer.close(); $("cards").replaceChildren(); this.card = null; }
+  },
+};
+
+const viewer = {
+  card: null,
+  index: 0,
+  open(card, index) {
+    if (!card || !card.items || !card.items.length) return;
+    this.card = card;
+    this.index = Math.max(0, Math.min(index, card.items.length - 1));
+    this.render();
+    $("viewer").hidden = false;
+    // Vrai plein écran si le navigateur l'autorise (il faut souvent un geste récent), sinon la fenêtre entière.
+    const el = $("viewer");
+    if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
+  },
+  render() {
+    const item = this.card.items[this.index];
+    const img = $("viewer-img");
+    if (item.image && item.image.startsWith("data:image/")) { img.src = item.image; img.hidden = false; }
+    else { img.removeAttribute("src"); img.hidden = true; }
+    img.alt = item.title || "";
+    $("viewer-title").textContent = `${this.index + 1}/${this.card.items.length} · ${item.title || ""}`;
+    $("viewer-text").textContent = [item.subtitle, item.detail].filter(Boolean).join(" — ");
+  },
+  step(delta) {
+    if (!this.card) { if (screen.card) this.open(screen.card, 0); return; }
+    const n = this.card.items.length;
+    this.index = (this.index + delta + n) % n;
+    this.render();
+  },
+  close() {
+    if ($("viewer").hidden) return;
+    $("viewer").hidden = true;
+    this.card = null;
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   },
 };
 
@@ -237,7 +298,11 @@ function onMessage(msg) {
       ui.hint("Je vous écoute…");
       break;
     case "display":
+      viewer.close();
       ui.card(msg.card);
+      break;
+    case "screen":
+      screen.control(msg.action, msg.item);
       break;
     case "notify":
       if (msg.card) ui.card(msg.card, "notify"); else ui.add("system", msg.text);
@@ -404,6 +469,19 @@ $("text-form").addEventListener("submit", (e) => {
   e.preventDefault();
   ask($("text").value.trim());
   $("text").value = "";
+});
+
+$("viewer-close").addEventListener("click", () => viewer.close());
+$("viewer-prev").addEventListener("click", () => viewer.step(-1));
+$("viewer-next").addEventListener("click", () => viewer.step(1));
+document.addEventListener("keydown", (e) => {
+  if ($("viewer").hidden) return;
+  if (e.key === "Escape") viewer.close();
+  else if (e.key === "ArrowRight") viewer.step(1);
+  else if (e.key === "ArrowLeft") viewer.step(-1);
+});
+document.addEventListener("fullscreenchange", () => {
+  if (!document.fullscreenElement && !$("viewer").hidden) viewer.close();
 });
 
 $("forget").addEventListener("click", () => {

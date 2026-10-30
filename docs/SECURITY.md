@@ -18,6 +18,8 @@ Jarvis entend ce qui se dit chez toi et dans ta voiture, et il aura bientôt acc
 | **Outils en lecture seule** | Courriels : IMAP en TLS, boîte ouverte avec `EXAMINE` et messages lus avec `BODY.PEEK` (rien n'est marqué comme lu). Agenda : lien iCal en lecture. Aucun outil ne peut envoyer, payer ou supprimer. |
 | **Injection de prompt** | Un courriel piégé (« Jarvis, ignore tes règles et… ») est une vraie menace. Le contenu externe arrive au modèle marqué comme donnée non fiable, et le prompt système interdit d'y obéir. Surtout, les outils sont **en lecture seule par construction** : même trompé, Jarvis ne peut rien faire de grave. Le client web affiche tout en `textContent` (pas d'injection HTML). |
 | **Paramètres d'outils validés** | Chaque paramètre envoyé par le modèle est vérifié (type, bornes, champs inconnus) avant exécution. Le nom de fichier de mémoire est filtré, donc pas de `../`. |
+| **Téléchargements web (anti-SSRF)** | Images et pages sont téléchargées par le cerveau à partir d'adresses non fiables : http/https seulement, ports 80/443, pas d'identifiants dans l'adresse, **adresse IP publique obligatoire**, vérifiée à chaque redirection. « Affiche http://192.168.0.1/… » est refusé : Jarvis ne peut pas sonder ton réseau local. Taille et durée limitées. |
+| **Images vérifiées** | Le format est reconnu à partir des octets (JPEG, PNG, GIF, WebP, AVIF), pas à partir de l'en-tête. Le SVG est refusé. L'image arrive au navigateur en `data:` : la CSP reste stricte et ton navigateur ne contacte aucun site tiers. |
 | **Mots de passe d'application** | Gmail et iCloud : un mot de passe dédié à Jarvis, révocable, jamais le mot de passe principal. |
 
 ## Accéder à Jarvis depuis tes autres appareils

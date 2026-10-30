@@ -70,7 +70,17 @@ Codes d'erreur : `bad_json`, `unknown_type`, `bad_audio`, `too_long`, `turn_fail
    {"title":"Votre facture est prête","subtitle":"Hydro-Québec","detail":"Montant dû : 84,32 $"}]}}
 ```
 
-Une fiche (`card`) a un `title`, un `text` facultatif et des `items` (`title`, et en option `subtitle` et `detail`). **Affiche tout en texte brut**, jamais en HTML : le contenu vient de courriels, donc de l'extérieur.
+Une fiche (`card`) a un `title`, un `text` facultatif, un `layout` (`list` ou `gallery`) et des `items` (`title`, et en option `subtitle`, `detail` et `image`). **Affiche tout en texte brut**, jamais en HTML : le contenu vient de courriels ou du web, donc de l'extérieur.
+
+`image` est toujours une `data:image/…;base64,…` : le cerveau a déjà téléchargé et vérifié l'image, donc le client n'a jamais à contacter un site tiers. Les éléments sont numérotés à partir de 1.
+
+Pilotage de l'écran (« zoom sur la première », « la suivante », « ferme ») :
+
+```
+{"type":"screen","action":"zoom","item":1}      (zoom | next | previous | close | clear)
+```
+
+`zoom` affiche l'élément `item` de la dernière fiche en plein écran ; `next` et `previous` naviguent ; `close` ferme le plein écran ; `clear` vide l'écran.
 
 ## 5. Notifications spontanées
 

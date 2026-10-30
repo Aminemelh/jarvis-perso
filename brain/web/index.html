@@ -61,5 +61,16 @@
       </details>
     </section>
   </main>
+
+  <div id="viewer" class="viewer" hidden role="dialog" aria-modal="true" aria-labelledby="viewer-title">
+    <button id="viewer-close" class="viewer-close" type="button" aria-label="Fermer">✕</button>
+    <button id="viewer-prev" class="viewer-nav prev" type="button" aria-label="Précédent">‹</button>
+    <img id="viewer-img" alt="">
+    <button id="viewer-next" class="viewer-nav next" type="button" aria-label="Suivant">›</button>
+    <div class="viewer-caption">
+      <div id="viewer-title" class="viewer-title"></div>
+      <div id="viewer-text" class="viewer-text"></div>
+    </div>
+  </div>
 </body>
 </html>

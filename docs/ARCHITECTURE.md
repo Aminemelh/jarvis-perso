@@ -63,7 +63,7 @@ Ajouter Fish Audio, par exemple, revient à écrire `tts/fish.py` avec une méth
 | `sentences.py` | découpage du flux en phrases, nettoyage du Markdown |
 | `wakeword.py` | détection de « Jarvis » dans une transcription |
 | `tools/` | outils proposés à Claude (`builtin.py`) et validation de leurs paramètres (`__init__.py`) |
-| `sources/` | accès aux données : `mail.py` (IMAP), `calendar.py` (iCal), `weather.py` (Open-Meteo) |
+| `sources/` | accès aux données : `mail.py` (IMAP), `calendar.py` (iCal), `weather.py` (Open-Meteo), `news.py` (RSS), `images.py` (images, pages), `web.py` (téléchargement sûr, anti-SSRF) |
 | `services.py` | regroupe les sources configurées dans `.env` |
 | `hub.py` | appareils connectés, dernier utilisé, notifications et file d'attente |
 | `watcher.py` | surveillance en arrière-plan (courriels, rendez-vous, rappels, factures, briefing) |

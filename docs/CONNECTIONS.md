@@ -52,6 +52,10 @@ Outlook : Paramètres → Calendrier → Calendriers partagés → **Publier un 
 
 Rien à configurer : Open-Meteo, gratuit et sans clé. La ville par défaut est `JARVIS_CITY`.
 
+## Actualités
+
+Flux RSS gratuits : Radio-Canada, Le Devoir et La Presse par défaut. Pour en changer, utilise `JARVIS_NEWS_FEEDS` dans `.env` (format `Nom|adresse`, séparés par des virgules). Un flux en panne est simplement ignoré. Si un article n'a pas de photo dans le flux, Jarvis prend l'image principale de la page de l'article.
+
 ## Recherche web
 
 C'est l'outil `web_search` de Claude, facturé environ 1 ¢ par recherche (3 recherches maximum par question). Pour le désactiver : `JARVIS_WEB_SEARCH=false`.
@@ -69,6 +73,10 @@ C'est l'outil `web_search` de Claude, facturé environ 1 ¢ par recherche (3 rec
 - « Suis cette facture » (après qu'il en a trouvé une) → rappel 3 jours avant l'échéance, la veille, le jour J
 - « J'ai payé Hydro-Québec » → plus de rappel
 - « Mon briefing » → météo, rendez-vous, courriels, factures et rappels du jour
+- « Montre-moi deux photos de l'actualité » → deux photos s'affichent, numérotées 1 et 2
+- « Zoom sur la première » / « La suivante » / « Ferme » → plein écran, pilotable à la voix
+- « Montre-moi une photo de la tour Eiffel » → recherche web, puis image de la page trouvée
+- « Affiche ça sur mon téléphone » → la même chose sur un autre appareil connecté
 
 Sur la page web, les boutons **Mon briefing**, **Courriels**, **Factures**, **Agenda** et **Rappels** posent ces questions pour toi.
 

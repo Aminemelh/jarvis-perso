@@ -116,8 +116,10 @@ async def get_weather(args: dict, ctx: ToolContext) -> dict:
 
 # ---------------------------------------------------------------- écran
 
-async def show_on_screen(args: dict, ctx: ToolContext) -> str:
-    card = {"title": args["title"], "items": args.get("items", []), "text": args.get("text", "")}
+MAX_CARD_IMAGES = 8
+
+
+def _target(args: dict, ctx: ToolContext):
     target = ctx.session
     if args.get("device"):
         target = ctx.hub.find(args["device"])
@@ -128,8 +130,77 @@ async def show_on_screen(args: dict, ctx: ToolContext) -> str:
         others = [s.device for s in ctx.hub.connected() if s.has_display]
         hint = f" Appareils avec écran connectés : {', '.join(others)}." if others else ""
         raise ToolError(f"L'appareil « {target.device} » n'a pas d'écran : résume à voix haute.{hint}")
+    return target
+
+
+async def show_on_screen(args: dict, ctx: ToolContext) -> str:
+    target = _target(args, ctx)
+    items = [dict(i) for i in args.get("items", [])]
+    with_images = [i for i in items if i.get("image_url")]
+    if len(with_images) > MAX_CARD_IMAGES:
+        raise ToolError(f"{MAX_CARD_IMAGES} images maximum par fiche.")
+    failed = []
+    if with_images:
+        if ctx.services.images is None:
+            raise ToolError("Le téléchargement d'images n'est pas disponible.")
+        results = await asyncio.gather(*(ctx.services.images.data_url(i["image_url"]) for i in with_images),
+                                       return_exceptions=True)
+        for item, res in zip(with_images, results):
+            if isinstance(res, Exception):
+                failed.append(f"{item['title']} ({res})")
+            else:
+                item["image"] = res
+    for item in items:
+        item.pop("image_url", None)  # l'adresse d'origine ne part pas vers le client
+    card = {"title": args["title"], "items": items, "text": args.get("text", ""),
+            "layout": "gallery" if any("image" in i for i in items) else "list"}
     await target.send({"type": "display", "card": card})
-    return f"Affiché sur « {target.device} »."
+    target.screen = {"title": card["title"],
+                     "items": [{"title": i["title"], "image": "image" in i} for i in items]}
+    shown = "; ".join(f"{n}. {i['title']}{' (image)' if 'image' in i else ''}" for n, i in enumerate(items, 1))
+    result = f"Affiché sur « {target.device} » : {shown or card['title']}."
+    if failed:
+        result += " Images introuvables : " + "; ".join(failed) + "."
+    return result
+
+
+async def screen_control(args: dict, ctx: ToolContext) -> str:
+    target = _target(args, ctx)
+    action = args["action"]
+    item = args.get("item")
+    screen = getattr(target, "screen", None)
+    if action == "zoom":
+        if not screen or not screen["items"]:
+            raise ToolError("Rien n'est affiché sur cet écran pour l'instant.")
+        item = item or 1
+        if not 1 <= item <= len(screen["items"]):
+            raise ToolError(f"Il n'y a que {len(screen['items'])} élément(s) à l'écran.")
+    await target.send({"type": "screen", "action": action, "item": item})
+    if action == "zoom":
+        return f"Élément {item} (« {screen['items'][item - 1]['title']} ») en plein écran."
+    return {"close": "Plein écran fermé.", "next": "Élément suivant.", "previous": "Élément précédent.",
+            "clear": "Écran vidé."}[action]
+
+
+# ---------------------------------------------------------------- actualités et images du web
+
+async def get_news(args: dict, ctx: ToolContext) -> dict:
+    articles, errors = await ctx.services.news.latest(args.get("query"), args.get("count", 5))
+    out = {"note": UNTRUSTED_NOTE + " Pour montrer des photos, passe `image_url` à show_on_screen.",
+           "count": len(articles), "articles": [a.to_dict() for a in articles]}
+    if errors:
+        out["sources_indisponibles"] = errors
+    if not articles:
+        out["conseil"] = "Aucun article dans les flux : essaie web_search puis page_images."
+    return out
+
+
+async def page_images(args: dict, ctx: ToolContext) -> dict:
+    try:
+        found = await ctx.services.images.page_images(args["url"])
+    except Exception as e:  # noqa: BLE001 - FetchError, réseau…
+        raise ToolError(f"Page inaccessible : {e}") from e
+    return {"note": UNTRUSTED_NOTE + " Passe l'`url` d'une image à show_on_screen (champ image_url).", **found}
 
 
 # ---------------------------------------------------------------- mémoire
@@ -235,18 +306,32 @@ def build_tools(settings: Settings, services: Services) -> dict[str, Tool]:
         Tool("show_on_screen",
              "Affiche une fiche sur l'écran de l'appareil (ou d'un autre appareil connecté via `device`). "
              "Utilise-le dès que la réponse contient une liste ou des détails (courriels, rendez-vous, "
-             "factures, météo sur plusieurs jours) ; à l'oral, ne donne alors qu'un résumé d'une ou deux phrases.",
+             "factures, météo sur plusieurs jours) ou quand on te demande de montrer des photos (`image_url`) ; "
+             "à l'oral, ne donne alors qu'un résumé d'une ou deux phrases. Les éléments sont numérotés à partir "
+             "de 1 pour screen_control.",
              _obj({
                  "title": {"type": "string", "maxLength": 120},
                  "items": {"type": "array", "maxItems": 30, "items": _obj({
                      "title": {"type": "string", "maxLength": 200},
                      "subtitle": {"type": "string", "maxLength": 200},
                      "detail": {"type": "string", "maxLength": 1000},
+                     "image_url": {"type": "string", "maxLength": 2000,
+                                   "description": "Adresse d'une image (get_news, page_images) à afficher."},
                  }, ["title"])},
                  "text": {"type": "string", "maxLength": 4000},
                  "device": {"type": "string", "description": "Nom d'un autre appareil connecté, ex. « telephone »."},
              }, ["title"]),
-             show_on_screen),
+             show_on_screen, status="J'affiche…"),
+        Tool("screen_control",
+             "Pilote l'écran : `zoom` met l'élément `item` (1 = le premier) en plein écran (« zoom sur la "
+             "première », « montre-la en grand »), `next` / `previous` passent à l'élément suivant ou précédent "
+             "en plein écran, `close` ferme le plein écran, `clear` vide l'écran.",
+             _obj({
+                 "action": {"type": "string", "enum": ["zoom", "next", "previous", "close", "clear"]},
+                 "item": {"type": "integer", "minimum": 1, "maximum": 30},
+                 "device": {"type": "string", "description": "Autre appareil connecté (facultatif)."},
+             }, ["action"]),
+             screen_control),
         Tool("remember",
              "Enregistre un fait durable sur l'utilisateur dans sa mémoire persistante (préférences, "
              "personnes, habitudes, informations qu'il te demande de retenir). Pas pour les choses passagères.",
@@ -264,6 +349,23 @@ def build_tools(settings: Settings, services: Services) -> dict[str, Tool]:
              }),
              get_weather, status="Je regarde la météo…"),
     ]
+    if services.images:
+        tools.append(Tool(
+            "page_images",
+            "Liste les images d'une page web (image principale et photos de l'article) avec leur adresse. "
+            "Utilise-le après web_search pour montrer une photo de n'importe quoi.",
+            _obj({"url": {"type": "string", "maxLength": 2000}}, ["url"]),
+            page_images, status="Je cherche des images…"))
+    if services.news:
+        tools.append(Tool(
+            "get_news",
+            "Dernières actualités (titres, résumé, source, lien et photo `image_url`), filtrables par sujet. "
+            "Pour « montre-moi l'actualité », « des photos des nouvelles », « quoi de neuf sur X ».",
+            _obj({
+                "query": {"type": "string", "maxLength": 100, "description": "Sujet (facultatif)."},
+                "count": {"type": "integer", "minimum": 1, "maximum": 10},
+            }),
+            get_news, status="Je consulte l'actualité…"))
     if services.planner:
         tools += [
             Tool("set_reminder",

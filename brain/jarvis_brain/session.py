@@ -73,6 +73,7 @@ class DeviceSession:
         self.toolbox_factory = toolbox_factory
         self.want_audio = True
         self.has_display = False
+        self.screen: dict | None = None  # ce qui est affiché sur cet appareil (pour « zoom sur la première »)
         self.last_active = time.monotonic()
 
     # ---- envoi (un verrou garantit que le JSON et son audio restent collés) ----
@@ -244,7 +245,7 @@ class DeviceSession:
                 pass
 
     async def _respond(self, turn_id: int, user_text: str, reply_parts: list[str]) -> None:
-        system = build_system(self.settings, self.device)
+        system = build_system(self.settings, self.device, self.screen)
         messages = to_messages(self.store.snapshot(), user_text)
         toolbox = self.toolbox_factory(self) if self.toolbox_factory else None
         splitter = SentenceSplitter()
