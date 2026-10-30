@@ -145,7 +145,10 @@ class ToolBox:
             if tool.status:
                 await self.context.session.send({"type": "status", "text": tool.status})
             result = await tool.handler(raw_input, self.context)
-            content = result if isinstance(result, str) else json.dumps(result, ensure_ascii=False, default=str)
+            if isinstance(result, (str, list)):  # liste = blocs de contenu (ex. une photo + du texte)
+                content = result
+            else:
+                content = json.dumps(result, ensure_ascii=False, default=str)
             return {"type": "tool_result", "tool_use_id": tool_use_id, "content": content}
         except ToolError as e:
             return {"type": "tool_result", "tool_use_id": tool_use_id, "content": str(e), "is_error": True}

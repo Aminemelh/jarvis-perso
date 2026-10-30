@@ -180,3 +180,18 @@ form { display: flex; gap: 8px; }
 .viewer-nav { top: 50%; transform: translateY(-50%); }
 .viewer-nav.prev { left: 16px; }
 .viewer-nav.next { right: 16px; }
+
+/* Caméra */
+.icon-btn { background: var(--panel); border: 1px solid #24314d; padding: 0 12px; font-size: 1.2rem; }
+.camera video { width: 100vw; height: 100vh; object-fit: contain; background: #000; }
+.camera-bar {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 16px;
+  display: flex; gap: 12px; justify-content: center; background: linear-gradient(transparent, rgba(0, 0, 0, .8));
+}
+.camera-count {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 30vmin; font-weight: 200; color: rgba(255, 255, 255, .85); pointer-events: none;
+}
+.camera-count[hidden] { display: none; }
+.msg.photo { padding: 4px; }
+.msg.photo img { display: block; max-width: 220px; border-radius: 10px; }

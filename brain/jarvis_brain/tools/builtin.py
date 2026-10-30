@@ -11,6 +11,7 @@ from ..briefing import _amount, build_briefing, when_due
 from ..config import Settings
 from ..pc import normalize
 from ..school import due_phrase, is_deadline
+from ..vision import PhotoError, image_block
 from ..services import Services
 from ..sources.mail import BILL_KEYWORDS, MailClient
 from . import Tool, ToolContext, ToolError, ask_confirmation, confirmed
@@ -301,6 +302,26 @@ async def daily_briefing(args: dict, ctx: ToolContext) -> dict:
             "note": "Dis ce briefing presque tel quel, naturellement ; la fiche est déjà affichée."}
 
 
+# ---------------------------------------------------------------- vision
+
+async def look(args: dict, ctx: ToolContext) -> list:
+    target = ctx.session
+    if args.get("device"):
+        target = ctx.hub.find(args["device"])
+        if target is None:
+            raise ToolError(f"Appareil « {args['device']} » non connecté.")
+    if not getattr(target, "has_camera", False):
+        others = [s.device for s in ctx.hub.connected() if getattr(s, "has_camera", False)]
+        hint = f" Appareils avec caméra connectés : {', '.join(others)}." if others else ""
+        raise ToolError(f"L'appareil « {target.device} » n'a pas de caméra disponible.{hint}")
+    try:
+        raw, mime = await target.request_photo()
+    except PhotoError as e:
+        raise ToolError(f"Pas de photo : {e}") from e
+    return [image_block(raw, mime),
+            {"type": "text", "text": f"Photo prise à l'instant par la caméra de « {target.device} »."}]
+
+
 # ---------------------------------------------------------------- listes
 
 async def list_add(args: dict, ctx: ToolContext) -> str:
@@ -467,6 +488,13 @@ def build_tools(settings: Settings, services: Services) -> dict[str, Tool]:
              }),
              get_weather, status="Je regarde la météo…"),
     ]
+    tools.append(Tool(
+        "look",
+        "Prend une photo avec la caméra de l'appareil (ou d'un autre via `device`) et te la montre. "
+        "Pour « regarde ça », « c'est quoi ce truc ? », « lis ce panneau », « traduis ça » quand aucune "
+        "photo n'est déjà jointe à la question.",
+        _obj({"device": {"type": "string", "maxLength": 40}}),
+        look, status="J'ouvre la caméra…"))
     if services.pc:
         apps = ", ".join(sorted(services.pc_apps))
         tools += [

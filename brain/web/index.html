@@ -52,6 +52,7 @@
       <div id="log" class="log" aria-live="polite"></div>
 
       <form id="text-form" class="text-form">
+        <button id="camera-btn" type="button" class="icon-btn" aria-label="Prendre une photo pour Jarvis" title="Montrer quelque chose à Jarvis">📷</button>
         <input id="text" type="text" autocomplete="off" placeholder="Ou écris ta demande…" maxlength="2000">
         <button type="submit">Envoyer</button>
       </form>
@@ -64,6 +65,16 @@
       </details>
     </section>
   </main>
+
+  <div id="camera" class="viewer camera" hidden role="dialog" aria-modal="true" aria-label="Caméra">
+    <video id="camera-video" autoplay playsinline muted></video>
+    <div id="camera-count" class="camera-count" hidden></div>
+    <div class="camera-bar">
+      <button id="camera-cancel" type="button" class="danger">Annuler</button>
+      <button id="camera-flip" type="button" aria-label="Changer de caméra">🔄</button>
+      <button id="camera-shoot" type="button">Prendre la photo</button>
+    </div>
+  </div>
 
   <div id="viewer" class="viewer" hidden role="dialog" aria-modal="true" aria-labelledby="viewer-title">
     <button id="viewer-close" class="viewer-close" type="button" aria-label="Fermer">✕</button>

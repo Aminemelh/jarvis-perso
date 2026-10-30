@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import itertools
 import logging
+import secrets
 import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Awaitable, Callable
@@ -23,6 +24,7 @@ from .prompts import build_system
 from .sentences import SentenceSplitter, clean_for_speech
 from .stt import STT
 from .tts import TTS
+from .vision import PhotoError, decode_photo, image_block
 from .wakeword import strip_wake_word
 
 if TYPE_CHECKING:
@@ -74,6 +76,9 @@ class DeviceSession:
         self.push = push
         self.visible = True  # la page est-elle affichée ? (sinon : notification push)
         self.current_turn = 0  # numéro du dernier tour de parole de l'utilisateur
+        self.has_camera = False
+        self.pending_photo: tuple[bytes, str] | None = None  # photo jointe à la prochaine question
+        self._camera_requests: dict[str, asyncio.Future] = {}
         self.pending_confirmations: dict[str, tuple] = {}
         self.want_audio = True
         self.has_display = False
@@ -134,6 +139,26 @@ class DeviceSession:
             self.visible = bool(msg.get("visible", True))
             if self.visible:
                 self.last_active = time.monotonic()
+        elif kind == "photo":
+            # Photo prise avec le bouton 📷 : elle accompagne la prochaine question.
+            try:
+                self.pending_photo = decode_photo(msg.get("data", ""))
+            except PhotoError as e:
+                raise ProtocolError("bad_photo", str(e)) from e
+            await self.send({"type": "photo_ok"})
+            if msg.get("question"):
+                self.last_active = time.monotonic()
+                self.start_turn(text=str(msg["question"])[: self.settings.max_text_chars])
+        elif kind == "camera_result":
+            future = self._camera_requests.pop(str(msg.get("request_id", "")), None)
+            if future and not future.done():
+                if msg.get("error"):
+                    future.set_exception(PhotoError(str(msg["error"])[:200]))
+                else:
+                    try:
+                        future.set_result(decode_photo(msg.get("data", "")))
+                    except PhotoError as e:
+                        future.set_exception(e)
         elif kind == "push_subscribe":
             if not self.push:
                 raise ProtocolError("push_unavailable", "Notifications push indisponibles sur ce serveur.")
@@ -178,7 +203,23 @@ class DeviceSession:
     async def close(self) -> None:
         for task in list(self._wake_checks) + list(self._background):
             task.cancel()
+        for future in self._camera_requests.values():
+            if not future.done():
+                future.set_exception(PhotoError("Appareil déconnecté."))
         await self.cancel()
+
+    async def request_photo(self, timeout: float = 30.0) -> tuple[bytes, str]:
+        """Demande à cet appareil de prendre une photo (« Jarvis, regarde ça »)."""
+        request_id = secrets.token_hex(4)
+        future: asyncio.Future = asyncio.get_running_loop().create_future()
+        self._camera_requests[request_id] = future
+        await self.send({"type": "camera", "action": "capture", "request_id": request_id})
+        try:
+            return await asyncio.wait_for(future, timeout)
+        except asyncio.TimeoutError as e:
+            raise PhotoError("La caméra n'a pas répondu.") from e
+        finally:
+            self._camera_requests.pop(request_id, None)
 
     # ---- notifications spontanées (courriel reçu, rappel de rendez-vous…) ----
 
@@ -240,7 +281,10 @@ class DeviceSession:
                     return
             await self.send({"type": "transcript", "turn_id": turn_id, "text": user_text})
             await self.send({"type": "state", "state": "thinking", "turn_id": turn_id})
-            await self._respond(turn_id, user_text, reply_parts)
+            photo, self.pending_photo = self.pending_photo, None
+            await self._respond(turn_id, user_text, reply_parts, photo)
+            if photo:
+                user_text += " [avec une photo]"
         except asyncio.CancelledError:
             cancelled = True
             raise
@@ -262,9 +306,12 @@ class DeviceSession:
             except Exception:  # noqa: BLE001 - connexion déjà fermée
                 pass
 
-    async def _respond(self, turn_id: int, user_text: str, reply_parts: list[str]) -> None:
+    async def _respond(self, turn_id: int, user_text: str, reply_parts: list[str],
+                       photo: tuple[bytes, str] | None = None) -> None:
         system = build_system(self.settings, self.device, self.screen)
         messages = to_messages(self.store.snapshot(), user_text)
+        if photo:
+            messages[-1]["content"] = [image_block(*photo), {"type": "text", "text": user_text}]
         toolbox = self.toolbox_factory(self) if self.toolbox_factory else None
         splitter = SentenceSplitter()
         sentences: asyncio.Queue[str | None] = asyncio.Queue()

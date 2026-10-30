@@ -124,6 +124,80 @@ const viewer = {
   },
 };
 
+// ---------- caméra : « Jarvis, regarde ça » ----------
+const camera = {
+  stream: null,
+  facing: "environment",  // caméra arrière du téléphone par défaut
+  resolve: null,
+  async start() {
+    this.stop();
+    this.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: this.facing, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false,
+    });
+    $("camera-video").srcObject = this.stream;
+    $("camera").hidden = false;
+  },
+  stop() {
+    if (this.stream) for (const track of this.stream.getTracks()) track.stop();
+    this.stream = null;
+    $("camera-video").srcObject = null;
+    $("camera").hidden = true;
+    $("camera-count").hidden = true;
+  },
+  // Photo JPEG, réduite à 1280 px de large au maximum (rapide à envoyer, suffisant pour la vision).
+  async snapshot() {
+    const video = $("camera-video");
+    const scale = Math.min(1, 1280 / (video.videoWidth || 1280));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round((video.videoWidth || 1280) * scale);
+    canvas.height = Math.round((video.videoHeight || 720) * scale);
+    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+    this.thumbnail(dataUrl);
+    return dataUrl.split(",")[1];
+  },
+  thumbnail(dataUrl) {
+    const div = document.createElement("div");
+    div.className = "msg user photo";
+    const img = document.createElement("img");
+    img.src = dataUrl;
+    img.alt = "Photo envoyée à Jarvis";
+    div.appendChild(img);
+    $("log").appendChild(div);
+    $("log").scrollTop = $("log").scrollHeight;
+  },
+  // Bouton 📷 : l'utilisateur cadre et appuie.
+  async manual() {
+    try { await this.start(); } catch (e) { ui.add("system", "Caméra inaccessible : " + e.message); return; }
+    this.resolve = async () => {
+      const data = await this.snapshot();
+      this.stop();
+      const question = $("text").value.trim() || "Qu'est-ce que tu vois sur cette photo ?";
+      $("text").value = "";
+      interrupt();
+      brain.send({ type: "photo", data, question });
+    };
+  },
+  // Demande du cerveau : compte à rebours 3-2-1 puis photo automatique.
+  async capture(requestId) {
+    const fail = (error) => brain.send({ type: "camera_result", request_id: requestId, error });
+    try { await this.start(); } catch (e) { fail("Caméra inaccessible : " + e.message); return; }
+    this.resolve = null;
+    let n = 3;
+    $("camera-count").hidden = false;
+    $("camera-count").textContent = n;
+    const timer = setInterval(async () => {
+      if ($("camera").hidden) { clearInterval(timer); fail("Photo annulée."); return; }
+      n -= 1;
+      if (n > 0) { $("camera-count").textContent = n; return; }
+      clearInterval(timer);
+      const data = await this.snapshot();
+      this.stop();
+      brain.send({ type: "camera_result", request_id: requestId, data });
+    }, 1000);
+  },
+};
+
 // ---------- lecture audio : les phrases arrivent une par une et s'enchaînent ----------
 class Player {
   constructor() { this.ctx = null; this.nextTime = 0; this.sources = new Set(); this.onIdle = null; }
@@ -197,7 +271,10 @@ class Brain {
     ws.binaryType = "arraybuffer";
     this.ws = ws;
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "auth", token: this.token, client: "web/0.2", audio_replies: prefs.voice, display: true }));
+      ws.send(JSON.stringify({
+        type: "auth", token: this.token, client: "web/0.3", audio_replies: prefs.voice, display: true,
+        camera: Boolean(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+      }));
     };
     ws.onmessage = (ev) => {
       if (typeof ev.data !== "string") {
@@ -305,6 +382,9 @@ function onMessage(msg) {
       break;
     case "screen":
       screen.control(msg.action, msg.item);
+      break;
+    case "camera":
+      camera.capture(msg.request_id);
       break;
     case "notify":
       if (msg.card) ui.card(msg.card, "notify"); else ui.add("system", msg.text);
@@ -472,6 +552,15 @@ $("text-form").addEventListener("submit", (e) => {
   e.preventDefault();
   ask($("text").value.trim());
   $("text").value = "";
+});
+
+$("camera-btn").addEventListener("click", () => camera.manual());
+$("camera-cancel").addEventListener("click", () => camera.stop());
+$("camera-shoot").addEventListener("click", () => { if (camera.resolve) camera.resolve(); });
+$("camera-flip").addEventListener("click", async () => {
+  camera.facing = camera.facing === "environment" ? "user" : "environment";
+  const resolve = camera.resolve;
+  try { await camera.start(); camera.resolve = resolve; } catch { /* une seule caméra */ }
 });
 
 $("viewer-close").addEventListener("click", () => viewer.close());

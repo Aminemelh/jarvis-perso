@@ -102,6 +102,9 @@ C'est l'outil `web_search` de Claude, facturé environ 1 ¢ par recherche (3 rec
 - « Ajoute du lait et des œufs à l'épicerie », « j'ai pris le lait », « montre ma liste » → listes partagées entre tous tes appareils
 - « Ajoute réviser INF1070 à mes tâches », « qu'est-ce qu'il me reste à faire ? »
 - « Quand est mon prochain examen ? », « mes remises de la semaine »
+- 📷 puis « C'est quoi ça ? » → il analyse la photo (plante, objet, plat, panneau, document…)
+- « Jarvis, regarde ça » → la caméra s'ouvre, 3-2-1, photo, réponse ; « regarde avec le téléphone » pour utiliser un autre appareil
+- « Lis-moi ce panneau », « traduis ce menu », « résume cette page » (photo d'un document)
 - « Verrouille l'ordi » → immédiat ; « éteins l'ordi » → il demande confirmation, puis éteint dans une minute (« annule » pour l'en empêcher)
 
 Sur la page web, les boutons **Mon briefing**, **Courriels**, **Factures**, **Agenda** et **Rappels** posent ces questions pour toi.

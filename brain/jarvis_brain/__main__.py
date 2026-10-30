@@ -95,7 +95,7 @@ def main(argv: list[str] | None = None) -> int:
             port=settings.port,
             ssl_certfile=str(settings.tls_cert) if settings.tls_cert else None,
             ssl_keyfile=str(settings.tls_key) if settings.tls_key else None,
-            ws_max_size=1 << 20,  # 1 Mo par message WebSocket
+            ws_max_size=5 << 20,  # 5 Mo par message WebSocket (photos)
             server_header=False,
         )
         return 0

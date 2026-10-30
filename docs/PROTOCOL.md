@@ -19,7 +19,7 @@ Réponse :
 
 En cas d'échec, la connexion est fermée avec le code **4401**. Après 5 échecs en une minute depuis la même IP, la connexion est fermée avec le code **4429**.
 
-`display: true` signale que l'appareil a un écran : il peut recevoir des fiches (`display`). Le serveur répond aussi la liste des outils actifs dans `auth_ok.tools`.
+`camera: true` signale une caméra utilisable (outil `look`). `display: true` signale que l'appareil a un écran : il peut recevoir des fiches (`display`). Le serveur répond aussi la liste des outils actifs dans `auth_ok.tools`.
 
 Le token passe dans un message et non dans l'URL : les URL finissent souvent dans des logs (proxy, historique).
 
@@ -34,6 +34,8 @@ Le token passe dans un message et non dans l'URL : les URL finissent souvent dan
 | `{"type":"cancel"}` | Arrête la réponse en cours. |
 | `{"type":"config","audio_replies":false}` | Réponses en texte seulement (pas de WAV). |
 | `{"type":"ping"}` | Le cerveau répond `{"type":"pong"}`. |
+| `{"type":"photo","data":"<base64 JPEG/PNG/WebP>","question":"…"}` | Photo jointe à la question (ou à la prochaine si `question` est absent). 3 Mo maximum. Réponse : `{"type":"photo_ok"}`. |
+| `{"type":"camera_result","request_id":"…","data":"<base64>"}` | Réponse à une demande `camera` du cerveau (ou `"error":"…"` si refus/annulation). |
 | `{"type":"visibility","visible":false}` | La page est cachée : les notifications passent par Web Push, et un appareil visible parle à la place. |
 | `{"type":"push_subscribe","subscription":{…}}` | Abonnement Web Push (`PushSubscription.toJSON()`), créé avec `auth_ok.push_key`. Réponse : `{"type":"push_ok"}`. |
 
@@ -83,6 +85,12 @@ Pilotage de l'écran (« zoom sur la première », « la suivante », « ferme �
 ```
 
 `zoom` affiche l'élément `item` de la dernière fiche en plein écran ; `next` et `previous` naviguent ; `close` ferme le plein écran ; `clear` vide l'écran.
+
+Demande de photo (« Jarvis, regarde ça ») : le client ouvre la caméra, prend la photo et répond par `camera_result` avec le même `request_id` (30 s maximum).
+
+```
+{"type":"camera","action":"capture","request_id":"a1b2c3d4"}
+```
 
 ## 5. Notifications spontanées
 

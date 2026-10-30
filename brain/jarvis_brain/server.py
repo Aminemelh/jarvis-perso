@@ -47,7 +47,7 @@ SECURITY_HEADERS = {
     ),
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
-    "Permissions-Policy": "microphone=(self), camera=(), geolocation=()",
+    "Permissions-Policy": "microphone=(self), camera=(self), geolocation=()",
     "Cross-Origin-Opener-Policy": "same-origin",
 }
 
@@ -132,6 +132,7 @@ def create_app(settings: Settings, engines: Engines | None = None, services: Ser
         )
         session.want_audio = bool(hello.get("audio_replies", True))
         session.has_display = bool(hello.get("display", False))
+        session.has_camera = bool(hello.get("camera", False))
         await session.send({
             "type": "auth_ok", "device": device, "protocol": PROTOCOL_VERSION,
             "server": f"jarvis-brain/{__version__}",
