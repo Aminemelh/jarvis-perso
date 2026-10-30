@@ -70,6 +70,6 @@ Tout appareil qui a un token peut demander « lis-moi mes courriels ». Révoque
 
 ## À venir
 
-- **Outils qui agissent** (répondre à un courriel, domotique) : confirmation vocale avant toute action, et liste d'outils autorisés par appareil.
-- Journal d'audit des appels d'outils.
-- OAuth Google (accès plus fin et révocable que le mot de passe d'application).
+- Liste d'outils autorisés **par appareil** (la voiture n'a pas besoin d'envoyer des courriels ni d'éteindre le PC).
+- Lecture des courriels Gmail par OAuth, plus fine que le mot de passe d'application.
+- Reconnaissance de ta voix pour les actions sensibles.
