@@ -31,6 +31,7 @@ Priorité actuelle : **ordinateur et téléphone**. La télé et la voiture vien
 - [x] Listes (épicerie, tâches…) cochables, partagées entre appareils
 - [x] UQAM : remises Moodle et horaire de cours dans le briefing, rappels avant chaque remise
 - [x] Vision : photo jointe (📷) ou prise à la demande (« regarde ça »), analysée par Claude
+- [x] Répondre aux courriels / en écrire, avec brouillon verrouillé et confirmation vocale
 - [ ] Résumé automatique des vieilles conversations vers la mémoire longue
 - [ ] Connexions MCP, domotique (Home Assistant)
 - [ ] Option Fish Audio (`tts/fish.py`) à côté de Piper

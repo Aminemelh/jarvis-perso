@@ -29,6 +29,9 @@ class MailAccount:
     password: str
     port: int = 993
     folder: str = "INBOX"
+    smtp_host: str = ""  # envoi (réponses) ; vide = déduit du serveur IMAP connu, sinon envoi désactivé
+    smtp_port: int = 465
+    send_enabled: bool = True
 
 
 @dataclass(frozen=True)
@@ -134,6 +137,14 @@ class Settings:
         return self.data_dir / "pending_notifications.jsonl"
 
 
+# Serveur d'envoi connu pour chaque serveur IMAP (465 = TLS direct, 587 = STARTTLS).
+SMTP_DEFAULTS = {
+    "imap.gmail.com": ("smtp.gmail.com", 465),
+    "imap.mail.me.com": ("smtp.mail.me.com", 587),
+    "imap.mail.yahoo.com": ("smtp.mail.yahoo.com", 465),
+}
+
+
 def _mail_accounts(environ: dict[str, str]) -> tuple[MailAccount, ...]:
     """JARVIS_MAIL_<NOM>_HOST / _USER / _PASSWORD [/ _PORT / _FOLDER], un compte par <NOM>."""
     names = sorted({m.group(1) for k in environ if (m := re.fullmatch(r"JARVIS_MAIL_([A-Z0-9]+)_HOST", k))})
@@ -144,6 +155,9 @@ def _mail_accounts(environ: dict[str, str]) -> tuple[MailAccount, ...]:
             accounts.append(MailAccount(
                 name=n.lower(), host=get("HOST"), user=get("USER"), password=get("PASSWORD"),
                 port=int(get("PORT", "993")), folder=get("FOLDER", "INBOX"),
+                smtp_host=get("SMTP_HOST") or SMTP_DEFAULTS.get(get("HOST").lower(), ("", 0))[0],
+                smtp_port=int(get("SMTP_PORT") or SMTP_DEFAULTS.get(get("HOST").lower(), ("", 465))[1]),
+                send_enabled=_bool(get("SEND") or None, True),
             ))
     return tuple(accounts)
 

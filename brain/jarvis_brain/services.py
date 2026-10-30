@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Callable
 from zoneinfo import ZoneInfo
 
 from .config import Settings
@@ -11,6 +12,7 @@ from .planner import Planner
 from .sources.calendar import CalendarClient
 from .sources.images import ImageService
 from .sources.mail import MailClient
+from .sources import smtp
 from .sources.news import NewsClient
 from .sources.weather import WeatherClient
 from .sources.web import SafeFetcher
@@ -26,6 +28,10 @@ class Services:
     news: NewsClient | None = None
     pc: PCBackend | None = None
     pc_apps: dict[str, str] = field(default_factory=dict)
+    mail_sender: Callable = smtp.send  # remplaçable dans les tests
+
+    def senders(self) -> list[MailClient]:
+        return [c for c in self.mail if c.account.smtp_host and c.account.send_enabled]
 
     def mail_client(self, account: str) -> MailClient:
         for client in self.mail:

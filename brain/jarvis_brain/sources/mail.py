@@ -165,6 +165,9 @@ class MailClient:
             summary = self._summary(uid, _flags(item[0]), msg, 0).to_dict()
             summary.pop("snippet")
             summary["body"] = body_text(msg)[:max_chars]
+            summary["message_id"] = str(msg.get("Message-ID", "")).strip()
+            summary["references"] = " ".join(str(msg.get("References", "")).split())
+            summary["reply_to"] = parseaddr(str(msg.get("Reply-To", "")))[1] or summary["sender_email"]
             return summary
         finally:
             _logout(conn)

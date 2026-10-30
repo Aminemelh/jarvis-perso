@@ -19,6 +19,8 @@ Jarvis lit en **IMAP**, en **lecture seule** : il ne peut ni envoyer, ni supprim
 
 Ce mot de passe ne donne accès qu'aux courriels, pas à ton compte Google entier. Tu peux le révoquer à tout moment sur la même page. N'utilise **jamais** ton vrai mot de passe Google.
 
+L'**envoi** (réponses) utilise le même mot de passe d'application, en SMTP chiffré : rien à ajouter pour Gmail, iCloud et Yahoo. Pour l'interdire : `JARVIS_MAIL_GMAIL_SEND=false`.
+
 Autres fournisseurs :
 
 | Fournisseur | `HOST` | Mot de passe |
@@ -105,6 +107,8 @@ C'est l'outil `web_search` de Claude, facturé environ 1 ¢ par recherche (3 rec
 - 📷 puis « C'est quoi ça ? » → il analyse la photo (plante, objet, plat, panneau, document…)
 - « Jarvis, regarde ça » → la caméra s'ouvre, 3-2-1, photo, réponse ; « regarde avec le téléphone » pour utiliser un autre appareil
 - « Lis-moi ce panneau », « traduis ce menu », « résume cette page » (photo d'un document)
+- « Réponds à Sarah que je serai là à 19 h » → il affiche le brouillon, te le lit, demande « je l'envoie ? » ; il n'envoie qu'après ton « oui »
+- « Écris au prof de INF1070 pour demander un délai » → pareil, avec l'adresse que tu lui donnes
 - « Verrouille l'ordi » → immédiat ; « éteins l'ordi » → il demande confirmation, puis éteint dans une minute (« annule » pour l'en empêcher)
 
 Sur la page web, les boutons **Mon briefing**, **Courriels**, **Factures**, **Agenda** et **Rappels** posent ces questions pour toi.

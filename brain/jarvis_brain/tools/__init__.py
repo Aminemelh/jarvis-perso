@@ -61,24 +61,35 @@ class Tool:
 CONFIRM_SECONDS = 120
 
 
-def ask_confirmation(ctx: ToolContext, action: str, summary: str) -> dict:
-    """Première étape d'une action sensible : rien n'est fait, on demande à l'utilisateur."""
+def ask_confirmation(ctx: ToolContext, action: str, summary: str, payload: object = None) -> dict:
+    """Première étape d'une action sensible : rien n'est fait, on demande à l'utilisateur.
+
+    `payload` (ex. le courriel exact à envoyer) est gardé côté serveur : ce qui sera exécuté après
+    le « oui » est exactement ce qui a été présenté, le modèle ne peut plus le modifier."""
     code = secrets.token_hex(3)
-    ctx.session.pending_confirmations[code] = (action, ctx.session.current_turn, time.monotonic())
+    ctx.session.pending_confirmations[code] = (action, ctx.session.current_turn, time.monotonic(), payload)
     return {"status": "confirmation_requise", "confirmation_id": code,
             "consigne": f"Demande à l'utilisateur de confirmer : « {summary} ». N'exécute rien maintenant. "
                         "S'il répond oui dans sa PROCHAINE réponse, rappelle l'outil avec ce confirmation_id."}
 
 
 def confirmed(ctx: ToolContext, code: str | None, action: str) -> bool:
+    return confirmed_payload(ctx, code, action) is not _NOT_CONFIRMED
+
+
+_NOT_CONFIRMED = object()
+
+
+def confirmed_payload(ctx: ToolContext, code: str | None, action: str) -> object:
+    """Renvoie le payload confirmé, ou _NOT_CONFIRMED si aucun code n'est fourni."""
     """Vrai seulement si l'utilisateur a repris la parole depuis la demande (imposé par le code,
     pas par le modèle : un courriel piégé ne peut pas « confirmer » à sa place)."""
     if not code:
-        return False
+        return _NOT_CONFIRMED
     entry = ctx.session.pending_confirmations.pop(code, None)
     if entry is None:
         raise ToolError("Confirmation inconnue ou expirée : redemande à l'utilisateur.")
-    wanted, turn, created = entry
+    wanted, turn, created, payload = entry
     if wanted != action:
         raise ToolError("Cette confirmation concerne une autre action.")
     if time.monotonic() - created > CONFIRM_SECONDS:
@@ -86,7 +97,7 @@ def confirmed(ctx: ToolContext, code: str | None, action: str) -> bool:
     if ctx.session.current_turn <= turn:
         ctx.session.pending_confirmations[code] = entry
         raise ToolError("L'utilisateur n'a pas encore répondu : attends son « oui » dans sa prochaine réponse.")
-    return True
+    return payload
 
 
 _TYPES = {"string": str, "integer": int, "number": (int, float), "boolean": bool, "array": list, "object": dict}
