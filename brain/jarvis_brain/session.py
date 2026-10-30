@@ -73,6 +73,8 @@ class DeviceSession:
         self.toolbox_factory = toolbox_factory
         self.push = push
         self.visible = True  # la page est-elle affichée ? (sinon : notification push)
+        self.current_turn = 0  # numéro du dernier tour de parole de l'utilisateur
+        self.pending_confirmations: dict[str, tuple] = {}
         self.want_audio = True
         self.has_display = False
         self.screen: dict | None = None  # ce qui est affiché sur cet appareil (pour « zoom sur la première »)
@@ -161,6 +163,7 @@ class DeviceSession:
         if self._turn and not self._turn.done():
             self._turn.cancel()
         turn_id = next(self._turn_ids)
+        self.current_turn = turn_id
         self._turn = asyncio.create_task(self._run_turn(turn_id, text, pcm, sample_rate))
 
     async def cancel(self) -> None:

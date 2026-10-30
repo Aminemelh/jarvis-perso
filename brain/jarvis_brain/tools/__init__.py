@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
+import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
@@ -52,6 +54,39 @@ class Tool:
             # Les paramètres arrivent au fil de l'eau : on les valide nous-mêmes (validate()).
             "eager_input_streaming": True,
         }
+
+
+# ---------------------------------------------------------------- confirmation vocale
+
+CONFIRM_SECONDS = 120
+
+
+def ask_confirmation(ctx: ToolContext, action: str, summary: str) -> dict:
+    """Première étape d'une action sensible : rien n'est fait, on demande à l'utilisateur."""
+    code = secrets.token_hex(3)
+    ctx.session.pending_confirmations[code] = (action, ctx.session.current_turn, time.monotonic())
+    return {"status": "confirmation_requise", "confirmation_id": code,
+            "consigne": f"Demande à l'utilisateur de confirmer : « {summary} ». N'exécute rien maintenant. "
+                        "S'il répond oui dans sa PROCHAINE réponse, rappelle l'outil avec ce confirmation_id."}
+
+
+def confirmed(ctx: ToolContext, code: str | None, action: str) -> bool:
+    """Vrai seulement si l'utilisateur a repris la parole depuis la demande (imposé par le code,
+    pas par le modèle : un courriel piégé ne peut pas « confirmer » à sa place)."""
+    if not code:
+        return False
+    entry = ctx.session.pending_confirmations.pop(code, None)
+    if entry is None:
+        raise ToolError("Confirmation inconnue ou expirée : redemande à l'utilisateur.")
+    wanted, turn, created = entry
+    if wanted != action:
+        raise ToolError("Cette confirmation concerne une autre action.")
+    if time.monotonic() - created > CONFIRM_SECONDS:
+        raise ToolError("Confirmation expirée (2 minutes) : redemande à l'utilisateur.")
+    if ctx.session.current_turn <= turn:
+        ctx.session.pending_confirmations[code] = entry
+        raise ToolError("L'utilisateur n'a pas encore répondu : attends son « oui » dans sa prochaine réponse.")
+    return True
 
 
 _TYPES = {"string": str, "integer": int, "number": (int, float), "boolean": bool, "array": list, "object": dict}

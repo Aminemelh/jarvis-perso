@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -91,6 +92,8 @@ class Settings:
     mail_accounts: tuple[MailAccount, ...] = ()
     calendars: tuple[CalendarSource, ...] = ()
     news_feeds: tuple[tuple[str, str], ...] = DEFAULT_NEWS_FEEDS
+    pc_control: bool = sys.platform == "win32"  # contrôle du PC où tourne le cerveau
+    pc_apps: str = ""  # applis supplémentaires : "obs=obs64.exe;notion=notion:"
 
     # Surveillance en arrière-plan (courriels, rappels de rendez-vous)
     watch_interval_seconds: int = 120
@@ -223,6 +226,8 @@ def load_settings(env_file: str | os.PathLike[str] | None = ".env") -> Settings:
         mail_accounts=_mail_accounts(dict(os.environ)),
         calendars=_calendars(dict(os.environ)),
         news_feeds=_feeds(env("JARVIS_NEWS_FEEDS")),
+        pc_control=_bool(env("JARVIS_PC_CONTROL"), sys.platform == "win32"),
+        pc_apps=env("JARVIS_PC_APPS", ""),
         watch_interval_seconds=int(env("JARVIS_WATCH_INTERVAL", "120")),
         reminder_minutes=int(env("JARVIS_REMINDER_MINUTES", "30")),
         quiet_hours=_hours(env("JARVIS_QUIET_HOURS")),

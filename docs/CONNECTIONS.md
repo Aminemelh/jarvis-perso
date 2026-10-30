@@ -77,6 +77,8 @@ C'est l'outil `web_search` de Claude, facturé environ 1 ¢ par recherche (3 rec
 - « Zoom sur la première » / « La suivante » / « Ferme » → plein écran, pilotable à la voix
 - « Montre-moi une photo de la tour Eiffel » → recherche web, puis image de la page trouvée
 - « Affiche ça sur mon téléphone » → la même chose sur un autre appareil connecté
+- « Ouvre Spotify », « mets pause », « chanson suivante », « monte le son », « volume à 30 » → sur le PC
+- « Verrouille l'ordi » → immédiat ; « éteins l'ordi » → il demande confirmation, puis éteint dans une minute (« annule » pour l'en empêcher)
 
 Sur la page web, les boutons **Mon briefing**, **Courriels**, **Factures**, **Agenda** et **Rappels** posent ces questions pour toi.
 

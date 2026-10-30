@@ -85,6 +85,8 @@ class FakeSession:
         self.last_active = 0.0
         self.sent: list[dict] = []
         self.notifications: list[tuple] = []
+        self.current_turn = 1
+        self.pending_confirmations: dict = {}
 
     async def send(self, msg, audio=None):
         self.sent.append(msg)

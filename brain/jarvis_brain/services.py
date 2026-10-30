@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from zoneinfo import ZoneInfo
 
 from .config import Settings
+from .pc import PCBackend, default_backend, parse_apps
 from .planner import Planner
 from .sources.calendar import CalendarClient
 from .sources.images import ImageService
@@ -23,6 +24,8 @@ class Services:
     planner: Planner | None = None
     images: ImageService | None = None
     news: NewsClient | None = None
+    pc: PCBackend | None = None
+    pc_apps: dict[str, str] = field(default_factory=dict)
 
     def mail_client(self, account: str) -> MailClient:
         for client in self.mail:
@@ -42,4 +45,6 @@ def create_services(settings: Settings) -> Services:
         planner=Planner(settings.planner_file),
         images=images,
         news=NewsClient(settings.news_feeds, fetcher, images) if settings.news_feeds else None,
+        pc=default_backend() if settings.pc_control else None,
+        pc_apps=parse_apps(settings.pc_apps),
     )

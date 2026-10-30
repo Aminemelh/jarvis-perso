@@ -67,6 +67,8 @@ Ajouter Fish Audio, par exemple, revient à écrire `tts/fish.py` avec une méth
 | `services.py` | regroupe les sources configurées dans `.env` |
 | `hub.py` | appareils connectés, dernier utilisé, notifications et file d'attente |
 | `watcher.py` | surveillance en arrière-plan (courriels, rendez-vous, rappels, factures, briefing) |
+| `pc.py` | contrôle du PC Windows (liste blanche d'actions, touches multimédia, verrouillage) |
+| `push.py` | notifications Web Push (VAPID, abonnements par appareil) |
 | `planner.py` | rappels et factures suivies (`data/planner.json`) |
 | `briefing.py` | briefing du jour, composé sans appeler Claude (gratuit et instantané) |
 
