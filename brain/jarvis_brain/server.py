@@ -22,6 +22,7 @@ from .auth import AuthRateLimiter, DeviceRegistry
 from .config import Settings
 from .conversation import ConversationStore
 from .hub import DeviceHub
+from .push import PushService
 from .services import Services, create_services
 from .session import DeviceSession, Engines, ProtocolError
 from .tools import ToolBox, ToolContext
@@ -52,11 +53,14 @@ SECURITY_HEADERS = {
 
 
 def create_app(settings: Settings, engines: Engines | None = None, services: Services | None = None,
-               watch: bool = True) -> FastAPI:
+               watch: bool = True, push: PushService | None | bool = True) -> FastAPI:
     registry = DeviceRegistry(settings.devices_file)
     limiter = AuthRateLimiter()
     store = ConversationStore(settings.history_file, settings.history_turns)
-    hub = DeviceHub(settings, store)
+    if push is True:
+        push = PushService(settings.data_dir)
+    push = push or None
+    hub = DeviceHub(settings, store, push)
     services = services or create_services(settings)
     tools = build_tools(settings, services) if settings.tools_enabled else {}
     remote_tools = server_tools(settings) if settings.tools_enabled else []
@@ -124,7 +128,7 @@ def create_app(settings: Settings, engines: Engines | None = None, services: Ser
 
         session = DeviceSession(
             device=device, settings=settings, engines=state["engines"], store=store,
-            send_json=ws.send_json, send_bytes=ws.send_bytes, toolbox_factory=toolbox_for,
+            send_json=ws.send_json, send_bytes=ws.send_bytes, toolbox_factory=toolbox_for, push=push,
         )
         session.want_audio = bool(hello.get("audio_replies", True))
         session.has_display = bool(hello.get("display", False))
@@ -134,6 +138,7 @@ def create_app(settings: Settings, engines: Engines | None = None, services: Ser
             "assistant": settings.assistant_name,
             "audio": {"input": "pcm_s16le", "output": "wav"},
             "tools": sorted(tools),
+            "push_key": push.public_key if push else None,
         })
 
         # 2) Boucle de messages

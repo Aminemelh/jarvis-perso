@@ -56,7 +56,7 @@ class DeviceSession:
 
     def __init__(self, device: str, settings: Settings, engines: Engines,
                  store: ConversationStore, send_json: SendJson, send_bytes: SendBytes,
-                 toolbox_factory: ToolBoxFactory | None = None):
+                 toolbox_factory: ToolBoxFactory | None = None, push=None):
         self.device = device
         self.settings = settings
         self.engines = engines
@@ -71,6 +71,8 @@ class DeviceSession:
         self._wake_checks: set[asyncio.Task] = set()
         self._background: set[asyncio.Task] = set()
         self.toolbox_factory = toolbox_factory
+        self.push = push
+        self.visible = True  # la page est-elle affichée ? (sinon : notification push)
         self.want_audio = True
         self.has_display = False
         self.screen: dict | None = None  # ce qui est affiché sur cet appareil (pour « zoom sur la première »)
@@ -126,6 +128,19 @@ class DeviceSession:
             await self.cancel()
         elif kind == "config":
             self.want_audio = bool(msg.get("audio_replies", True))
+        elif kind == "visibility":
+            self.visible = bool(msg.get("visible", True))
+            if self.visible:
+                self.last_active = time.monotonic()
+        elif kind == "push_subscribe":
+            if not self.push:
+                raise ProtocolError("push_unavailable", "Notifications push indisponibles sur ce serveur.")
+            sub = msg.get("subscription")
+            try:
+                self.push.subscribe(self.device, sub if isinstance(sub, dict) else {})
+            except ValueError as e:
+                raise ProtocolError("bad_subscription", str(e)) from e
+            await self.send({"type": "push_ok"})
         elif kind == "ping":
             await self.send({"type": "pong"})
         else:

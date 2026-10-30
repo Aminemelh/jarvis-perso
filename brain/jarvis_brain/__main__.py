@@ -60,6 +60,10 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.action == "revoke":
             ok = registry.revoke(args.name)
+            if ok and settings.data_dir.joinpath("push_subscriptions.json").exists():
+                from .push import PushService
+
+                PushService(settings.data_dir).remove_device(args.name)  # plus de notifications non plus
             print("Révoqué." if ok else "Appareil introuvable.")
             return 0 if ok else 1
 

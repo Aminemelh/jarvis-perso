@@ -271,6 +271,8 @@ function onMessage(msg) {
   switch (msg.type) {
     case "auth_ok":
       ui.status(`En ligne · ${msg.device}`, true);
+      push.setup(msg.push_key);
+      brain.send({ type: "visibility", visible: !document.hidden });
       ui.hint(prefs.handsfree ? "J'écoute. Dis « Jarvis… »" : "Touche le cercle pour parler");
       break;
     case "state":
@@ -306,9 +308,10 @@ function onMessage(msg) {
       break;
     case "notify":
       if (msg.card) ui.card(msg.card, "notify"); else ui.add("system", msg.text);
-      if (document.hidden && "Notification" in window && Notification.permission === "granted") {
-        try { new Notification("Jarvis", { body: msg.text, icon: "icon.svg" }); } catch { /* ignoré */ }
-      }
+      break;  // page cachée : le cerveau envoie une notification push à la place
+    case "push_ok":
+      ui.add("system", "Notifications activées sur cet appareil.");
+      $("push").textContent = "Notifications activées ✓";
       break;
     case "status":
       ui.hint(msg.text);
@@ -491,10 +494,52 @@ $("forget").addEventListener("click", () => {
 });
 
 // Le mode mains libres a besoin d'un geste pour démarrer le micro (règle des navigateurs).
-document.addEventListener("click", () => {
-  if (prefs.handsfree) ensureMic();
-  if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
-}, { once: true });
+document.addEventListener("click", () => { if (prefs.handsfree) ensureMic(); }, { once: true });
+
+// Page affichée ou cachée : quand elle est cachée, le cerveau envoie une notification push.
+document.addEventListener("visibilitychange", () => {
+  if (brain) brain.send({ type: "visibility", visible: !document.hidden });
+});
+
+// ---------- notifications push (téléphone, page fermée) ----------
+function b64urlToBytes(text) {
+  const pad = "=".repeat((4 - (text.length % 4)) % 4);
+  const raw = atob((text + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+}
+
+const push = {
+  key: null,
+  supported: () => "serviceWorker" in navigator && "PushManager" in window && window.isSecureContext,
+  async setup(key) {
+    this.key = key;
+    const btn = $("push");
+    if (!key || !this.supported()) { btn.hidden = true; return; }
+    btn.hidden = false;
+    const reg = await navigator.serviceWorker.register("sw.js");
+    const existing = await reg.pushManager.getSubscription();
+    if (existing && Notification.permission === "granted") {
+      // Renvoie l'abonnement à chaque connexion (le serveur a pu être réinstallé).
+      brain.send({ type: "push_subscribe", subscription: existing.toJSON() });
+    }
+  },
+  async enable() {
+    if (!this.key || !this.supported()) return;
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      ui.add("system", "Notifications refusées. Tu peux les autoriser dans les réglages du navigateur.");
+      return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64urlToBytes(this.key) });
+    }
+    brain.send({ type: "push_subscribe", subscription: sub.toJSON() });
+  },
+};
+
+$("push").addEventListener("click", () => push.enable().catch((e) => ui.add("system", "Notifications impossibles : " + e.message)));
 
 // Appairage automatique : le script d'installation ouvre /#token=jv_…
 // Le fragment (#) n'est jamais envoyé au serveur ; on l'efface aussitôt de l'adresse.

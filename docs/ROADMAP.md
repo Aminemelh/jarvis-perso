@@ -26,7 +26,7 @@ Priorité actuelle : **ordinateur et téléphone**. La télé et la voiture vien
 - [x] Rappels vocaux (« rappelle-moi dans 20 minutes… »)
 - [x] Boutons raccourcis sur la page web (briefing, courriels, factures, agenda, rappels)
 - [x] Photos à l'écran : actualités (RSS), images de n'importe quelle page, plein écran piloté à la voix (zoom, suivante, ferme)
-- [ ] Notifications push sur le téléphone même quand la page est fermée (Web Push)
+- [x] Notifications push sur le téléphone même quand la page est fermée (Web Push)
 - [ ] Résumé automatique des vieilles conversations vers la mémoire longue
 - [ ] Connexions MCP, domotique (Home Assistant)
 - [ ] Option Fish Audio (`tts/fish.py`) à côté de Piper

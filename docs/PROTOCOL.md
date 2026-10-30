@@ -34,6 +34,8 @@ Le token passe dans un message et non dans l'URL : les URL finissent souvent dan
 | `{"type":"cancel"}` | Arrête la réponse en cours. |
 | `{"type":"config","audio_replies":false}` | Réponses en texte seulement (pas de WAV). |
 | `{"type":"ping"}` | Le cerveau répond `{"type":"pong"}`. |
+| `{"type":"visibility","visible":false}` | La page est cachée : les notifications passent par Web Push, et un appareil visible parle à la place. |
+| `{"type":"push_subscribe","subscription":{…}}` | Abonnement Web Push (`PushSubscription.toJSON()`), créé avec `auth_ok.push_key`. Réponse : `{"type":"push_ok"}`. |
 
 Avec `wake_word: true`, le cerveau transcrit la phrase et :
 - l'**ignore** si elle ne commence pas par « Jarvis » : `{"type":"ignored","text":"…"}` ;

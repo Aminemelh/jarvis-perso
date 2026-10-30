@@ -93,6 +93,14 @@ La notification est **dite sur le dernier appareil que tu as utilisé**, et **af
 
 Chaque notification est aussi ajoutée à l'historique partagé : tu peux dire « c'était quoi, ce courriel ? » depuis n'importe quel appareil.
 
+## Notifications sur le téléphone, même page fermée
+
+1. Ouvre Jarvis sur ton téléphone, en HTTPS (via Tailscale, voir docs/SECURITY.md).
+2. Dans le menu de Chrome, choisis « Ajouter à l'écran d'accueil ».
+3. Dans Jarvis : **Réglages → Activer les notifications sur cet appareil**, puis accepte.
+
+Ensuite, quand la page est fermée ou cachée, les rappels, factures, courriels importants et le briefing arrivent comme des notifications Android normales. Touche une notification pour ouvrir Jarvis. Quand la page est affichée, Jarvis parle au lieu de notifier.
+
 ## Et le contenu du téléphone (SMS, notifications d'applis) ?
 
 Un navigateur ne peut pas lire tes SMS ni les notifications des autres applis, et c'est voulu. Il faudra la future **application Android** de Jarvis, avec une autorisation « accès aux notifications » que tu accordes explicitement (phase 4). D'ici là, tout ce qui passe par tes courriels et ton agenda est couvert.

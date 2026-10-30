@@ -19,6 +19,7 @@ from .config import Settings
 
 if TYPE_CHECKING:
     from .conversation import ConversationStore
+    from .push import PushService
     from .session import DeviceSession
 
 log = logging.getLogger(__name__)
@@ -32,10 +33,15 @@ def in_quiet_hours(hours: tuple[int, int] | None, now: datetime) -> bool:
     return start <= h < end if start < end else (h >= start or h < end)
 
 
+PUSH_TITLES = {"mail": "Nouveau courriel", "reminder": "Rappel", "bill": "Facture à payer",
+               "briefing": "Briefing du jour", "digest": "Pendant votre absence"}
+
+
 class DeviceHub:
-    def __init__(self, settings: Settings, store: ConversationStore):
+    def __init__(self, settings: Settings, store: ConversationStore, push: PushService | None = None):
         self.settings = settings
         self.store = store
+        self.push = push
         self._sessions: set[DeviceSession] = set()
 
     # ---- connexions ----
@@ -60,14 +66,25 @@ class DeviceHub:
         now = datetime.now(ZoneInfo(self.settings.timezone))
         await self.store.append_note("jarvis", f"[Notification] {text}")
         sessions = self.connected()
+        await self._push(text, kind, sessions)
         if not sessions:
             self._queue(text, card, kind)
             return "attente"
         quiet = in_quiet_hours(self.settings.quiet_hours, now)
-        speaker = sessions[0]
+        # Parle sur l'appareil le plus récemment utilisé dont la page est affichée.
+        speaker = next((s for s in sessions if getattr(s, "visible", True)), sessions[0])
         for s in sessions:
             await s.push_notification(text, card, kind, speak=(s is speaker and not quiet))
         return speaker.device
+
+    async def _push(self, text: str, kind: str, sessions: list[DeviceSession]) -> None:
+        """Notification système sur les appareils abonnés dont la page n'est pas affichée."""
+        if not self.push:
+            return
+        watching = {s.device for s in sessions if getattr(s, "visible", True)}
+        targets = self.push.devices() - watching
+        if targets:
+            await self.push.send(targets, PUSH_TITLES.get(kind, "Jarvis"), text, tag=kind)
 
     def _queue(self, text: str, card: dict | None, kind: str) -> None:
         path: Path = self.settings.inbox_file
