@@ -71,6 +71,37 @@ Ce que ça donne :
 
 Les événements « … s'ouvre » de Moodle sont ignorés : ce ne sont pas des échéances.
 
+## Spotify (musique)
+
+Jarvis cherche et lance la musique, et pilote la lecture (pause, suivant, volume) sur le Spotify ouvert sur ton PC ou ton téléphone. Si rien n'est ouvert, il ouvre Spotify sur le PC. **Spotify Premium est obligatoire** pour piloter la lecture (règle de Spotify). Sans Premium, « pause » et « suivant » marchent quand même avec les touches multimédia du PC.
+
+Une seule fois :
+1. Va sur https://developer.spotify.com/dashboard, connecte-toi, puis **Create app**.
+2. Nom : « Jarvis ». **Redirect URI** : `http://127.0.0.1:8888/callback` (exactement). Coche **Web API**, puis enregistre.
+3. Copie le **Client ID** dans `.env` : `JARVIS_SPOTIFY_CLIENT_ID=…`.
+4. Lance `python -m jarvis_brain connect spotify` : la page Spotify s'ouvre, clique **Accepter**.
+5. Redémarre Jarvis.
+
+Ensuite : « mets du Daft Punk », « lance ma playlist Chill », « chanson suivante », « c'est quoi cette chanson ? », « volume à 40 ».
+
+## Google Agenda (ajouter des événements)
+
+La lecture de l'agenda se fait par l'adresse iCal (plus haut). Pour **ajouter** des événements, il faut une autorisation Google, limitée aux événements de ton agenda.
+
+Une seule fois (environ 10 minutes) :
+1. Va sur https://console.cloud.google.com, puis **Créer un projet** (nom : « Jarvis »).
+2. **API et services → Bibliothèque** : cherche **Google Calendar API**, puis **Activer**.
+3. **API et services → Écran de consentement OAuth** : type **Externe**. Nom de l'appli « Jarvis », ton adresse en contact. Dans **Utilisateurs test**, ajoute ton adresse Gmail.
+4. Sur le même écran, clique **Publier l'application** (passage « En production »). Sinon, Google coupe l'accès tous les 7 jours. Google affichera « application non validée » à la connexion : c'est normal pour une appli perso, clique **Paramètres avancés → Accéder à Jarvis**.
+5. **Identifiants → Créer des identifiants → ID client OAuth** : type **Application de bureau**. Copie l'ID et le code secret dans `.env` :
+   ```
+   JARVIS_GOOGLE_CLIENT_ID=….apps.googleusercontent.com
+   JARVIS_GOOGLE_CLIENT_SECRET=…
+   ```
+6. Lance `python -m jarvis_brain connect google`, accepte, puis redémarre Jarvis.
+
+Ensuite : « mets dentiste jeudi à 14 h à la Clinique du Plateau », « bloque samedi pour le déménagement », « rappelle-le moi une heure avant ».
+
 ## Météo
 
 Rien à configurer : Open-Meteo, gratuit et sans clé. La ville par défaut est `JARVIS_CITY`.
@@ -109,6 +140,8 @@ C'est l'outil `web_search` de Claude, facturé environ 1 ¢ par recherche (3 rec
 - « Lis-moi ce panneau », « traduis ce menu », « résume cette page » (photo d'un document)
 - « Réponds à Sarah que je serai là à 19 h » → il affiche le brouillon, te le lit, demande « je l'envoie ? » ; il n'envoie qu'après ton « oui »
 - « Écris au prof de INF1070 pour demander un délai » → pareil, avec l'adresse que tu lui donnes
+- « Mets du Daft Punk », « chanson suivante », « c'est quoi cette chanson ? » → Spotify
+- « Mets dentiste jeudi à 14 h » → ajouté à Google Agenda, et il te répète la date pour que tu puisses corriger
 - « Verrouille l'ordi » → immédiat ; « éteins l'ordi » → il demande confirmation, puis éteint dans une minute (« annule » pour l'en empêcher)
 
 Sur la page web, les boutons **Mon briefing**, **Courriels**, **Factures**, **Agenda** et **Rappels** posent ces questions pour toi.

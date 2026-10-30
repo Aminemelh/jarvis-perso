@@ -98,6 +98,11 @@ class Settings:
     pc_control: bool = sys.platform == "win32"  # contrôle du PC où tourne le cerveau
     pc_apps: str = ""  # applis supplémentaires : "obs=obs64.exe;notion=notion:"
 
+    # Comptes connectés par OAuth (python -m jarvis_brain connect …)
+    spotify_client_id: str = ""
+    google_client_id: str = ""
+    google_client_secret: str = ""
+
     # Sécurité
     admin_devices: tuple[str, ...] = ("pc",)  # appareils autorisés à voir le tableau de bord sécurité
     hibp_api_key: str = ""  # Have I Been Pwned (facultatif, payant)
@@ -250,6 +255,9 @@ def load_settings(env_file: str | os.PathLike[str] | None = ".env") -> Settings:
         pc_apps=env("JARVIS_PC_APPS", ""),
         admin_devices=tuple(d.strip().lower() for d in env("JARVIS_ADMIN_DEVICES", "pc").split(",") if d.strip()),
         hibp_api_key=env("JARVIS_HIBP_API_KEY", ""),
+        spotify_client_id=env("JARVIS_SPOTIFY_CLIENT_ID", ""),
+        google_client_id=env("JARVIS_GOOGLE_CLIENT_ID", ""),
+        google_client_secret=env("JARVIS_GOOGLE_CLIENT_SECRET", ""),
         watch_interval_seconds=int(env("JARVIS_WATCH_INTERVAL", "120")),
         reminder_minutes=int(env("JARVIS_REMINDER_MINUTES", "30")),
         quiet_hours=_hours(env("JARVIS_QUIET_HOURS")),

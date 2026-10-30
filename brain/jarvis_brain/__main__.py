@@ -35,6 +35,9 @@ def main(argv: list[str] | None = None) -> int:
     tok_rev = tok_sub.add_parser("revoke")
     tok_rev.add_argument("name")
 
+    con = sub.add_parser("connect", help="connecte un compte (Spotify, Google Agenda) par OAuth")
+    con.add_argument("service", choices=["spotify", "google"])
+
     say = sub.add_parser("say", help="synthétise une phrase dans un fichier WAV")
     say.add_argument("text")
     say.add_argument("-o", "--output", default="test.wav")
@@ -66,6 +69,20 @@ def main(argv: list[str] | None = None) -> int:
                 PushService(settings.data_dir).remove_device(args.name)  # plus de notifications non plus
             print("Révoqué." if ok else "Appareil introuvable.")
             return 0 if ok else 1
+
+    if args.cmd == "connect":
+        from .oauth import PROVIDERS, OAuthClient, OAuthError
+
+        ids = {"spotify": (settings.spotify_client_id, ""),
+               "google": (settings.google_client_id, settings.google_client_secret)}
+        client_id, secret = ids[args.service]
+        try:
+            OAuthClient(PROVIDERS[args.service], client_id, secret, settings.data_dir).connect_interactive()
+        except OAuthError as e:
+            print(f"Échec : {e}", file=sys.stderr)
+            return 1
+        print(f"{args.service.capitalize()} connecté. Redémarre Jarvis pour activer les nouveaux outils.")
+        return 0
 
     if args.cmd == "say":
         from .tts import create_tts

@@ -33,6 +33,8 @@ Priorité actuelle : **ordinateur et téléphone**. La télé et la voiture vien
 - [x] Vision : photo jointe (📷) ou prise à la demande (« regarde ça »), analysée par Claude
 - [x] Répondre aux courriels / en écrire, avec brouillon verrouillé et confirmation vocale
 - [x] Tableau de bord sécurité : journal d'audit, appareils, révocation immédiate, connexions refusées, fuites (HIBP)
+- [x] Spotify : lancer morceaux, artistes, playlists ; piloter la lecture (ouvre Spotify sur le PC si besoin)
+- [x] Google Agenda : ajouter des événements (OAuth, droits limités aux événements)
 - [ ] Résumé automatique des vieilles conversations vers la mémoire longue
 - [ ] Connexions MCP, domotique (Home Assistant)
 - [ ] Option Fish Audio (`tts/fish.py`) à côté de Piper
